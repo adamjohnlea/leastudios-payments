@@ -130,6 +130,7 @@ class Checkout_Handler {
 		);
 
 		if ( 0 === $order_id ) {
+			global $wpdb;
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			error_log( '[leaStudios Payments] Failed to create order for session: ' . $session_id . ' | Last DB error: ' . $wpdb->last_error );
 		}
