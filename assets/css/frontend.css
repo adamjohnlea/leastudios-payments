@@ -1,0 +1,80 @@
+/* leaStudios Payments — Frontend Checkout Styles */
+
+.leastudios-payments-checkout {
+	max-width: 600px;
+	margin: 0 auto;
+}
+
+.leastudios-payments-checkout-mount {
+	min-height: 300px;
+}
+
+.leastudios-payments-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 200px;
+	color: #50575e;
+	font-size: 0.95em;
+}
+
+.leastudios-payments-error {
+	padding: 14px 18px;
+	background: #fcf0f1;
+	border-left: 4px solid #d63638;
+	border-radius: 4px;
+	color: #1d2327;
+}
+
+.leastudios-payments-login-required {
+	padding: 20px;
+	text-align: center;
+	background: #f0f6fc;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.leastudios-payments-login-required a {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 8px 20px;
+	text-decoration: none;
+}
+
+/* Account page. */
+.leastudios-payments-account {
+	max-width: 700px;
+}
+
+.leastudios-payments-account h3 {
+	margin-top: 24px;
+	margin-bottom: 12px;
+}
+
+.leastudios-payments-account-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 20px;
+}
+
+.leastudios-payments-account-table th,
+.leastudios-payments-account-table td {
+	padding: 10px 12px;
+	border: 1px solid #dcdcde;
+	text-align: left;
+}
+
+.leastudios-payments-account-table th {
+	background: #f6f7f7;
+	font-weight: 600;
+	font-size: 0.9em;
+}
+
+.leastudios-payments-account-table td {
+	font-size: 0.95em;
+}
+
+/* Confirmation page. */
+.leastudios-payments-confirmation {
+	max-width: 600px;
+}

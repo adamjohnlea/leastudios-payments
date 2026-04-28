@@ -1,0 +1,154 @@
+<?php
+/**
+ * REST API controller for Stripe Customer Portal sessions.
+ *
+ * @package LEAStudios\Payments\REST
+ */
+
+declare(strict_types=1);
+
+namespace LEAStudios\Payments\REST;
+
+// Prevent direct access.
+defined( 'ABSPATH' ) || exit;
+
+use LEAStudios\Payments\Stripe\Customer_Manager;
+use LEAStudios\Payments\Stripe\Stripe_Client;
+use WP_REST_Controller;
+use WP_REST_Request;
+use WP_REST_Response;
+use WP_REST_Server;
+
+/**
+ * Creates Stripe Billing Portal sessions for customers to manage their subscriptions.
+ */
+class Portal_Controller extends WP_REST_Controller {
+
+	/**
+	 * The REST namespace.
+	 *
+	 * @var string
+	 */
+	protected $namespace = 'leastudios-payments/v1';
+
+	/**
+	 * The REST base.
+	 *
+	 * @var string
+	 */
+	protected $rest_base = 'portal-session';
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Stripe_Client    $stripe_client    The Stripe client.
+	 * @param Customer_Manager $customer_manager The customer manager.
+	 */
+	public function __construct(
+		private readonly Stripe_Client $stripe_client,
+		private readonly Customer_Manager $customer_manager,
+	) {}
+
+	/**
+	 * Register the route.
+	 *
+	 * @return void
+	 */
+	public function register_routes(): void {
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base,
+			[
+				[
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => [ $this, 'create_item' ],
+					'permission_callback' => [ $this, 'create_item_permissions_check' ],
+					'args'                => [
+						'return_url' => [
+							'required'          => false,
+							'type'              => 'string',
+							'sanitize_callback' => 'esc_url_raw',
+						],
+					],
+				],
+			]
+		);
+	}
+
+	/**
+	 * Only logged-in users can access the customer portal.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 * @return bool True if the user is logged in.
+	 */
+	public function create_item_permissions_check( $request ): bool {
+		return is_user_logged_in();
+	}
+
+	/**
+	 * Create a Billing Portal session and return the URL.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 * @return WP_REST_Response The response.
+	 */
+	public function create_item( $request ): WP_REST_Response {
+		if ( ! $this->stripe_client->initialize() ) {
+			return new WP_REST_Response(
+				[
+					'success' => false,
+					'message' => __( 'Stripe is not configured.', 'leastudios-payments' ),
+				],
+				500
+			);
+		}
+
+		$user_id     = get_current_user_id();
+		$customer_id = get_user_meta( $user_id, Customer_Manager::META_KEY, true );
+
+		if ( ! is_string( $customer_id ) || '' === $customer_id ) {
+			return new WP_REST_Response(
+				[
+					'success' => false,
+					'message' => __( 'No Stripe customer found for your account.', 'leastudios-payments' ),
+				],
+				404
+			);
+		}
+
+		$return_url = $request->get_param( 'return_url' );
+
+		if ( empty( $return_url ) ) {
+			$return_url = home_url();
+		}
+
+		try {
+			$session = \Stripe\BillingPortal\Session::create(
+				[
+					'customer'   => $customer_id,
+					'return_url' => $return_url,
+				]
+			);
+		} catch ( \Stripe\Exception\ApiErrorException $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[leaStudios Payments] Portal session error: ' . $e->getMessage() );
+			}
+
+			return new WP_REST_Response(
+				[
+					'success' => false,
+					'message' => __( 'Unable to open the billing portal. Please try again later.', 'leastudios-payments' ),
+				],
+				500
+			);
+		}
+
+		return new WP_REST_Response(
+			[
+				'success' => true,
+				'url'     => $session->url,
+			],
+			200
+		);
+	}
+}

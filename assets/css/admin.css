@@ -1,0 +1,9 @@
+/* leaStudios Payments — Admin Styles */
+
+.leastudios-payments-wrap {
+	max-width: 800px;
+}
+
+.leastudios-payments-wrap .form-table th {
+	width: 200px;
+}
