@@ -25,9 +25,21 @@ define( 'LEASTUDIOS_PAYMENTS_FILE', __FILE__ );
 define( 'LEASTUDIOS_PAYMENTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LEASTUDIOS_PAYMENTS_URL', plugin_dir_url( __FILE__ ) );
 
-if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
-	require_once __DIR__ . '/vendor/autoload.php';
+if ( ! file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
+	add_action(
+		'admin_notices',
+		function () {
+			printf(
+				'<div class="notice notice-error"><p><strong>%s</strong>: %s</p></div>',
+				esc_html__( 'leaStudios Payments', 'leastudios-payments' ),
+				esc_html__( 'Plugin dependencies are missing. Run "composer install" in the plugin directory.', 'leastudios-payments' )
+			);
+		}
+	);
+	return;
 }
+
+require_once __DIR__ . '/vendor/autoload.php';
 
 /**
  * Initialize the plugin.

@@ -44,7 +44,7 @@ class Orders_List_Table extends \WP_List_Table {
 	/**
 	 * Define table columns.
 	 *
-	 * @return array Column slugs and labels.
+	 * @return array<string, string> Column slugs and labels.
 	 */
 	public function get_columns(): array {
 		return [
@@ -60,7 +60,7 @@ class Orders_List_Table extends \WP_List_Table {
 	/**
 	 * Define sortable columns.
 	 *
-	 * @return array Sortable column definitions.
+	 * @return array<string, array{0: string, 1: bool}> Sortable column definitions.
 	 */
 	public function get_sortable_columns(): array {
 		return [
@@ -102,7 +102,7 @@ class Orders_List_Table extends \WP_List_Table {
 	/**
 	 * Get status filter views.
 	 *
-	 * @return array View links.
+	 * @return array<string, string> View links.
 	 */
 	protected function get_views(): array {
 		$base_url = add_query_arg( 'page', 'leastudios-payments-orders', admin_url( 'admin.php' ) );
@@ -270,7 +270,7 @@ class Orders_List_Table extends \WP_List_Table {
 			return esc_html( $item->created_at );
 		}
 
-		return esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) ?? $item->created_at );
+		return esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) );
 	}
 
 	/**

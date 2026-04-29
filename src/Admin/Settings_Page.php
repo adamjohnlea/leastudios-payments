@@ -426,7 +426,7 @@ class Settings_Page {
 				'id'                => 'success_page',
 				'selected'          => $value,
 				'show_option_none'  => __( '-- Default (return to page) --', 'leastudios-payments' ),
-				'option_none_value' => 0,
+				'option_none_value' => '0',
 			]
 		);
 		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -453,7 +453,7 @@ class Settings_Page {
 				'id'                => 'cancel_page',
 				'selected'          => $value,
 				'show_option_none'  => __( '-- Default (return to page) --', 'leastudios-payments' ),
-				'option_none_value' => 0,
+				'option_none_value' => '0',
 			]
 		);
 		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped

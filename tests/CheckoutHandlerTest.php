@@ -111,18 +111,18 @@ class CheckoutHandlerTest extends TestCase {
 			[
 				'data' => [
 					'object' => [
-						'id'              => 'cs_test_789',
-						'mode'            => 'payment',
-						'customer'        => 'cus_abc',
-						'customer_email'  => 'buyer@example.com',
+						'id'               => 'cs_test_789',
+						'mode'             => 'payment',
+						'customer'         => 'cus_abc',
+						'customer_email'   => 'buyer@example.com',
 						'customer_details' => [
 							'email' => 'buyer@example.com',
 							'name'  => 'Test Buyer',
 						],
-						'amount_total'    => 2999,
-						'currency'        => 'usd',
-						'payment_intent'  => 'pi_xyz',
-						'metadata'        => [ 'wp_user_id' => '5' ],
+						'amount_total'     => 2999,
+						'currency'         => 'usd',
+						'payment_intent'   => 'pi_xyz',
+						'metadata'         => [ 'wp_user_id' => '5' ],
 					],
 				],
 			]
@@ -151,15 +151,15 @@ class CheckoutHandlerTest extends TestCase {
 			[
 				'data' => [
 					'object' => [
-						'id'              => 'cs_test_sub',
-						'mode'            => 'subscription',
-						'customer'        => 'cus_sub',
+						'id'               => 'cs_test_sub',
+						'mode'             => 'subscription',
+						'customer'         => 'cus_sub',
 						'customer_details' => [
 							'email' => 'sub@example.com',
 							'name'  => 'Subscriber',
 						],
-						'amount_total'    => 999,
-						'currency'        => 'usd',
+						'amount_total'     => 999,
+						'currency'         => 'usd',
 					],
 				],
 			]

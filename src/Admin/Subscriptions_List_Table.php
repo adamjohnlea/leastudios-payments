@@ -44,16 +44,16 @@ class Subscriptions_List_Table extends \WP_List_Table {
 	/**
 	 * Define table columns.
 	 *
-	 * @return array Column slugs and labels.
+	 * @return array<string, string> Column slugs and labels.
 	 */
 	public function get_columns(): array {
 		return [
-			'id'                   => __( 'ID', 'leastudios-payments' ),
-			'customer_email'       => __( 'Customer', 'leastudios-payments' ),
-			'stripe_price_id'      => __( 'Plan', 'leastudios-payments' ),
-			'status'               => __( 'Status', 'leastudios-payments' ),
-			'current_period_end'   => __( 'Renews', 'leastudios-payments' ),
-			'actions'              => __( 'Actions', 'leastudios-payments' ),
+			'id'                 => __( 'ID', 'leastudios-payments' ),
+			'customer_email'     => __( 'Customer', 'leastudios-payments' ),
+			'stripe_price_id'    => __( 'Plan', 'leastudios-payments' ),
+			'status'             => __( 'Status', 'leastudios-payments' ),
+			'current_period_end' => __( 'Renews', 'leastudios-payments' ),
+			'actions'            => __( 'Actions', 'leastudios-payments' ),
 		];
 	}
 
@@ -91,7 +91,7 @@ class Subscriptions_List_Table extends \WP_List_Table {
 	/**
 	 * Get status filter views.
 	 *
-	 * @return array View links.
+	 * @return array<string, string> View links.
 	 */
 	protected function get_views(): array {
 		$base_url = add_query_arg( 'page', 'leastudios-payments-subscriptions', admin_url( 'admin.php' ) );
@@ -215,7 +215,7 @@ class Subscriptions_List_Table extends \WP_List_Table {
 			return esc_html( $item->current_period_end );
 		}
 
-		return esc_html( wp_date( get_option( 'date_format' ), $timestamp ) ?? $item->current_period_end );
+		return esc_html( wp_date( get_option( 'date_format' ), $timestamp ) );
 	}
 
 	/**

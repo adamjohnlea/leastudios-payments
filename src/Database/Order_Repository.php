@@ -35,7 +35,7 @@ class Order_Repository {
 	public function create( array $data ): int {
 		global $wpdb;
 
-		$wp_user_id = isset( $data['wp_user_id'] ) && null !== $data['wp_user_id'] ? (int) $data['wp_user_id'] : null;
+		$wp_user_id = isset( $data['wp_user_id'] ) ? (int) $data['wp_user_id'] : null;
 
 		$insert_data = [
 			'stripe_session_id'        => $data['stripe_session_id'] ?? '',
@@ -115,7 +115,7 @@ class Order_Repository {
 	 * @param string $status Filter by payment_status, or '' for all.
 	 * @param int    $limit  Maximum results.
 	 * @param int    $offset Offset for pagination.
-	 * @return array Array of order objects.
+	 * @return array<int, \stdClass> Array of order objects.
 	 */
 	public function get_all( string $status = '', int $limit = 20, int $offset = 0 ): array {
 		global $wpdb;

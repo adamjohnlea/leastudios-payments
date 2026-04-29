@@ -50,7 +50,7 @@ class Shortcode {
 	 *   [leastudios_payment price_id="5"]
 	 *   [leastudios_payment product_id="3"]  — uses first active price.
 	 *
-	 * @param array|string $atts Shortcode attributes.
+	 * @param array<string, mixed>|string $atts Shortcode attributes.
 	 * @return string The rendered HTML.
 	 */
 	public function handle( array|string $atts ): string {

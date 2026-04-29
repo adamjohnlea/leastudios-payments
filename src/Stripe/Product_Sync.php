@@ -36,11 +36,11 @@ class Product_Sync {
 	/**
 	 * Create a product with one or more prices in Stripe and store locally.
 	 *
-	 * @param string $name        The product name.
-	 * @param string $description The product description.
-	 * @param string $image_url   The product image URL.
-	 * @param array  $prices           Array of price definitions, each with keys: amount, currency, type, recurring_interval, recurring_interval_count.
-	 * @param bool   $require_shipping Whether to collect shipping address at checkout.
+	 * @param string                           $name        The product name.
+	 * @param string                           $description The product description.
+	 * @param string                           $image_url   The product image URL.
+	 * @param array<int, array<string, mixed>> $prices Array of price definitions, each with keys: amount, currency, type, recurring_interval, recurring_interval_count.
+	 * @param bool                             $require_shipping Whether to collect shipping address at checkout.
 	 * @return array{success: bool, product_id: int, error: string}
 	 */
 	public function create_product( string $name, string $description, string $image_url, array $prices, bool $require_shipping = false ): array {
@@ -194,8 +194,8 @@ class Product_Sync {
 	/**
 	 * Add a price to an existing product.
 	 *
-	 * @param int   $local_product_id The local product ID.
-	 * @param array $price_data       Price definition with keys: amount, currency, type, recurring_interval, recurring_interval_count.
+	 * @param int                  $local_product_id The local product ID.
+	 * @param array<string, mixed> $price_data       Price definition with keys: amount, currency, type, recurring_interval, recurring_interval_count.
 	 * @return array{success: bool, price_id: int, error: string}
 	 */
 	public function add_price( int $local_product_id, array $price_data ): array {
@@ -296,9 +296,9 @@ class Product_Sync {
 	/**
 	 * Create a single price in Stripe and store locally.
 	 *
-	 * @param string $stripe_product_id The Stripe product ID.
-	 * @param int    $local_product_id  The local product ID.
-	 * @param array  $price_data        Price definition.
+	 * @param string               $stripe_product_id The Stripe product ID.
+	 * @param int                  $local_product_id  The local product ID.
+	 * @param array<string, mixed> $price_data        Price definition.
 	 * @return int The local price ID, or 0 on failure.
 	 */
 	private function create_price_for_product( string $stripe_product_id, int $local_product_id, array $price_data ): int {

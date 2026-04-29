@@ -28,7 +28,7 @@ class Confirmation {
 	/**
 	 * Cached session data to avoid multiple API calls on the same page.
 	 *
-	 * @var array|null
+	 * @var array<string, mixed>|null
 	 */
 	private ?array $session_cache = null;
 
@@ -57,8 +57,8 @@ class Confirmation {
 	 *   [leastudios_payment_confirmation]Thank you, {customer_name}! Your payment of {amount} was successful.[/leastudios_payment_confirmation]
 	 *   [leastudios_payment_confirmation] (with no content, renders a default confirmation)
 	 *
-	 * @param array|string $atts    Shortcode attributes.
-	 * @param string|null  $content The content between opening and closing tags.
+	 * @param array<string, mixed>|string $atts    Shortcode attributes.
+	 * @param string|null                 $content The content between opening and closing tags.
 	 * @return string The rendered HTML.
 	 */
 	public function handle( array|string $atts, ?string $content = null ): string {
@@ -99,8 +99,8 @@ class Confirmation {
 	/**
 	 * Replace merge tags in content with session data.
 	 *
-	 * @param string $content      The content with merge tags.
-	 * @param array  $session_data The Stripe session data.
+	 * @param string               $content      The content with merge tags.
+	 * @param array<string, mixed> $session_data The Stripe session data.
 	 * @return string Content with tags replaced.
 	 */
 	private function replace_tags( string $content, array $session_data ): string {
@@ -128,7 +128,7 @@ class Confirmation {
 			'{order_type}'     => 'subscription' === $mode
 				? esc_html__( 'Subscription', 'leastudios-payments' )
 				: esc_html__( 'One-time payment', 'leastudios-payments' ),
-			'{date}'           => esc_html( wp_date( get_option( 'date_format' ) ) ?? '' ),
+			'{date}'           => esc_html( wp_date( get_option( 'date_format' ) ) ),
 			'{session_id}'     => esc_html( $session_data['id'] ?? '' ),
 			'{payment_id}'     => esc_html( $session_data['payment_intent'] ?? '' ),
 		];
@@ -151,7 +151,7 @@ class Confirmation {
 	 * Fetch and cache session data from Stripe.
 	 *
 	 * @param string $session_id The Stripe Checkout Session ID.
-	 * @return array|null The session data, or null on failure.
+	 * @return array<string, mixed>|null The session data, or null on failure.
 	 */
 	private function get_session_data( string $session_id ): ?array {
 		if ( null !== $this->session_cache ) {

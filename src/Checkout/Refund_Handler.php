@@ -43,7 +43,7 @@ class Refund_Handler {
 	 * Updates the local order record to reflect the refund from Stripe.
 	 * This handles refunds made directly in the Stripe Dashboard.
 	 *
-	 * @param array $payload The full event payload.
+	 * @param array<string, mixed> $payload The full event payload.
 	 * @return void
 	 */
 	public function handle_charge_refunded( array $payload ): void {

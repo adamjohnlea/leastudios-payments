@@ -140,7 +140,7 @@ class Tags_Reference_Page {
 	/**
 	 * Get the default tag groups.
 	 *
-	 * @return array Array of tag group definitions.
+	 * @return array<int, array<string, mixed>> Array of tag group definitions.
 	 */
 	private function get_tag_groups(): array {
 		return [
@@ -203,10 +203,10 @@ class Tags_Reference_Page {
 				'usage_example' => "[leastudios_payment_confirmation]\nThank you, {customer_name}!\n\nYour {order_type} of {amount} for {product_name} has been processed.\n\nA confirmation has been sent to {customer_email}.\n[/leastudios_payment_confirmation]",
 			],
 			[
-				'title'       => __( 'Customer Account Page', 'leastudios-payments' ),
-				'description' => __( 'Place this shortcode on a page to give logged-in customers access to their order history, subscriptions, and billing management.', 'leastudios-payments' ),
-				'shortcode'   => '[leastudios_payment_account]',
-				'tags'        => [
+				'title'         => __( 'Customer Account Page', 'leastudios-payments' ),
+				'description'   => __( 'Place this shortcode on a page to give logged-in customers access to their order history, subscriptions, and billing management.', 'leastudios-payments' ),
+				'shortcode'     => '[leastudios_payment_account]',
+				'tags'          => [
 					[
 						'tag'         => __( '(no tags)', 'leastudios-payments' ),
 						'description' => __( 'This shortcode has no configurable tags. It automatically displays the logged-in user\'s orders, active subscriptions, and a "Manage Billing" button linking to the Stripe Customer Portal.', 'leastudios-payments' ),

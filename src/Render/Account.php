@@ -12,10 +12,7 @@ namespace LEAStudios\Payments\Render;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
-use LEAStudios\Payments\Database\Order_Repository;
-use LEAStudios\Payments\Database\Subscription_Repository;
 use LEAStudios\Payments\Stripe\Customer_Manager;
-use LEAStudios\Payments\Stripe\Stripe_Client;
 
 /**
  * Registers the [leastudios_payment_account] shortcode for displaying
@@ -26,15 +23,9 @@ class Account {
 	/**
 	 * Constructor.
 	 *
-	 * @param Order_Repository        $order_repository        The order repository.
-	 * @param Subscription_Repository $subscription_repository The subscription repository.
-	 * @param Stripe_Client           $stripe_client           The Stripe client.
-	 * @param Customer_Manager        $customer_manager        The customer manager.
+	 * @param Customer_Manager $customer_manager The customer manager.
 	 */
 	public function __construct(
-		private readonly Order_Repository $order_repository,
-		private readonly Subscription_Repository $subscription_repository,
-		private readonly Stripe_Client $stripe_client,
 		private readonly Customer_Manager $customer_manager,
 	) {}
 
@@ -50,10 +41,9 @@ class Account {
 	/**
 	 * Handle the shortcode.
 	 *
-	 * @param array|string $atts Shortcode attributes.
 	 * @return string The rendered HTML.
 	 */
-	public function handle( array|string $atts ): string {
+	public function handle(): string {
 		if ( ! is_user_logged_in() ) {
 			return sprintf(
 				'<div class="leastudios-payments-login-required"><p>%s</p><p><a href="%s" class="button">%s</a></p></div>',
@@ -124,7 +114,7 @@ class Account {
 								echo '&mdash;';
 							} else {
 								$ts = strtotime( $sub->current_period_end );
-								echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) ?? '' : '' );
+								echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) : '' );
 							}
 							?>
 						</td>
@@ -165,7 +155,7 @@ class Account {
 							<td>
 								<?php
 								$ts = strtotime( $order->created_at );
-								echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) ?? '' : '' );
+								echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) : '' );
 								?>
 							</td>
 							<td><?php echo esc_html( $this->format_amount( (int) $order->amount_total, $order->currency ) ); ?></td>
@@ -244,7 +234,7 @@ class Account {
 	 * Get orders for a specific WP user.
 	 *
 	 * @param int $user_id The WordPress user ID.
-	 * @return array Array of order objects.
+	 * @return array<int, \stdClass> Array of order objects.
 	 */
 	private function get_user_orders( int $user_id ): array {
 		global $wpdb;
@@ -265,7 +255,7 @@ class Account {
 	 * Get subscriptions for a specific WP user.
 	 *
 	 * @param int $user_id The WordPress user ID.
-	 * @return array Array of subscription objects.
+	 * @return array<int, \stdClass> Array of subscription objects.
 	 */
 	private function get_user_subscriptions( int $user_id ): array {
 		global $wpdb;

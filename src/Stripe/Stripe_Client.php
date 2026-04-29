@@ -96,7 +96,7 @@ class Stripe_Client {
 	 * @return string Three-letter currency code (lowercase).
 	 */
 	public function get_default_currency(): string {
-		$options = get_option( 'leastudios_payments_options', [] );
+		$options  = get_option( 'leastudios_payments_options', [] );
 		$currency = is_array( $options ) ? ( $options['default_currency'] ?? 'USD' ) : 'USD';
 
 		return strtolower( $currency );
@@ -108,7 +108,7 @@ class Stripe_Client {
 	 * @return string The decrypted webhook secret.
 	 */
 	public function get_webhook_secret(): string {
-		$options = get_option( 'leastudios_payments_options', [] );
+		$options   = get_option( 'leastudios_payments_options', [] );
 		$encrypted = is_array( $options ) ? ( $options['webhook_secret'] ?? '' ) : '';
 
 		if ( '' === $encrypted ) {

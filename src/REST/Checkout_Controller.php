@@ -129,7 +129,7 @@ class Checkout_Controller extends WP_REST_Controller {
 	/**
 	 * Get endpoint argument definitions.
 	 *
-	 * @return array The args schema.
+	 * @return array<string, array<string, mixed>> The args schema.
 	 */
 	private function get_endpoint_args(): array {
 		return [

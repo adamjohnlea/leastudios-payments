@@ -79,7 +79,7 @@ final class Plugin {
 		$refund_handler = new Refund_Handler( $order_repo );
 		$refund_handler->init();
 
-		$subscription_handler = new Subscription_Handler( $subscription_repo, $customer_manager, $stripe_client );
+		$subscription_handler = new Subscription_Handler( $subscription_repo, $stripe_client );
 		$subscription_handler->init();
 
 		// REST API.
@@ -87,7 +87,7 @@ final class Plugin {
 		$checkout_controller = new Checkout_Controller( $session_factory );
 		$products_controller = new Products_Controller( $product_repo, $price_repo );
 		$refund_controller   = new Refund_Controller( $stripe_client, $order_repo );
-		$portal_controller   = new Portal_Controller( $stripe_client, $customer_manager );
+		$portal_controller   = new Portal_Controller( $stripe_client );
 
 		add_action( 'rest_api_init', [ $webhook_controller, 'register_routes' ] );
 		add_action( 'rest_api_init', [ $checkout_controller, 'register_routes' ] );
@@ -100,7 +100,7 @@ final class Plugin {
 		$block        = new Block( $shortcode, $product_repo, $price_repo );
 		$confirmation = new Confirmation( $stripe_client );
 
-		$account = new Account( $order_repo, $subscription_repo, $stripe_client, $customer_manager );
+		$account = new Account( $customer_manager );
 
 		add_action( 'init', [ $shortcode, 'register' ] );
 		add_action( 'init', [ $block, 'register' ] );
@@ -121,7 +121,7 @@ final class Plugin {
 			$subscriptions_page = new Subscriptions_Page( $subscription_repo, $stripe_client );
 			$subscriptions_page->init();
 
-			$customers_page = new Customers_Page( $order_repo, $subscription_repo, $stripe_client );
+			$customers_page = new Customers_Page( $stripe_client );
 			$customers_page->init();
 
 			$tags_page = new Tags_Reference_Page();

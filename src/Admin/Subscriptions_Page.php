@@ -134,7 +134,8 @@ class Subscriptions_Page {
 
 		try {
 			if ( 'cancel_now' === $action ) {
-				\Stripe\Subscription::cancel( $subscription->stripe_subscription_id );
+				$stripe_sub = \Stripe\Subscription::retrieve( $subscription->stripe_subscription_id );
+				$stripe_sub->cancel();
 
 				$this->subscription_repository->update(
 					$sub_id,

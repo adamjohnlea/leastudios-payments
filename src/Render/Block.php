@@ -117,7 +117,7 @@ class Block {
 	/**
 	 * Server-side render callback for the block.
 	 *
-	 * @param array $attributes Block attributes.
+	 * @param array<string, mixed> $attributes Block attributes.
 	 * @return string The rendered checkout HTML.
 	 */
 	public function render_block( array $attributes ): string {

@@ -41,12 +41,10 @@ class Portal_Controller extends WP_REST_Controller {
 	/**
 	 * Constructor.
 	 *
-	 * @param Stripe_Client    $stripe_client    The Stripe client.
-	 * @param Customer_Manager $customer_manager The customer manager.
+	 * @param Stripe_Client $stripe_client The Stripe client.
 	 */
 	public function __construct(
 		private readonly Stripe_Client $stripe_client,
-		private readonly Customer_Manager $customer_manager,
 	) {}
 
 	/**

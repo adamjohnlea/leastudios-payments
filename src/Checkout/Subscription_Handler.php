@@ -13,7 +13,6 @@ namespace LEAStudios\Payments\Checkout;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Subscription_Repository;
-use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 
 /**
@@ -25,12 +24,10 @@ class Subscription_Handler {
 	 * Constructor.
 	 *
 	 * @param Subscription_Repository $subscription_repository The subscription repository.
-	 * @param Customer_Manager        $customer_manager        The customer manager.
 	 * @param Stripe_Client           $stripe_client           The Stripe client.
 	 */
 	public function __construct(
 		private readonly Subscription_Repository $subscription_repository,
-		private readonly Customer_Manager $customer_manager,
 		private readonly Stripe_Client $stripe_client,
 	) {}
 
@@ -50,7 +47,7 @@ class Subscription_Handler {
 	/**
 	 * Handle subscription created, updated, or deleted events.
 	 *
-	 * @param array $payload The full event payload.
+	 * @param array<string, mixed> $payload The full event payload.
 	 * @return void
 	 */
 	public function handle_subscription_change( array $payload ): void {
@@ -144,7 +141,7 @@ class Subscription_Handler {
 	/**
 	 * Handle invoice.paid — update subscription period and status.
 	 *
-	 * @param array $payload The full event payload.
+	 * @param array<string, mixed> $payload The full event payload.
 	 * @return void
 	 */
 	public function handle_invoice_paid( array $payload ): void {
@@ -182,7 +179,7 @@ class Subscription_Handler {
 	/**
 	 * Handle invoice.payment_failed — mark subscription as past due.
 	 *
-	 * @param array $payload The full event payload.
+	 * @param array<string, mixed> $payload The full event payload.
 	 * @return void
 	 */
 	public function handle_invoice_payment_failed( array $payload ): void {

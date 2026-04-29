@@ -73,7 +73,7 @@ class Price_Repository {
 	 *
 	 * @param int    $product_id The local product ID.
 	 * @param string $status     Filter by status, or '' for all.
-	 * @return array Array of price objects.
+	 * @return array<int, \stdClass> Array of price objects.
 	 */
 	public function get_by_product( int $product_id, string $status = 'active' ): array {
 		global $wpdb;

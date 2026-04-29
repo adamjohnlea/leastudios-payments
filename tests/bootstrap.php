@@ -31,3 +31,6 @@ tests_add_filter(
 require "{$_tests_dir}/includes/bootstrap.php";
 
 require_once __DIR__ . '/TestCase.php';
+
+// Install plugin tables once for the suite. dbDelta is idempotent.
+( new \LEAStudios\Payments\Database\Migration() )->maybe_migrate();

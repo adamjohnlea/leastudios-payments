@@ -130,7 +130,7 @@ class Subscription_Repository {
 	 * @param string $status Filter by status, or '' for all.
 	 * @param int    $limit  Maximum results.
 	 * @param int    $offset Offset for pagination.
-	 * @return array Array of subscription objects.
+	 * @return array<int, \stdClass> Array of subscription objects.
 	 */
 	public function get_all( string $status = '', int $limit = 20, int $offset = 0 ): array {
 		global $wpdb;

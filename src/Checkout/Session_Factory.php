@@ -188,7 +188,7 @@ class Session_Factory {
 	/**
 	 * Get the list of countries allowed for shipping.
 	 *
-	 * @return array Array of two-letter country codes.
+	 * @return array<int, string> Array of two-letter country codes.
 	 */
 	private function get_shipping_countries(): array {
 		$countries = [

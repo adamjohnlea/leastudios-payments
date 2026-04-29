@@ -43,7 +43,7 @@ class Checkout_Handler {
 	/**
 	 * Handle the checkout.session.completed event.
 	 *
-	 * @param array $payload The full event payload.
+	 * @param array<string, mixed> $payload The full event payload.
 	 * @return void
 	 */
 	public function handle_session_completed( array $payload ): void {
