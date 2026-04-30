@@ -1,6 +1,6 @@
 <?php
 /**
- * Nonce helper utilities.
+ * Nonce helper for secure form/action verification.
  *
  * @package LEAStudios\Payments\Security
  */
@@ -13,41 +13,56 @@ namespace LEAStudios\Payments\Security;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Static nonce helper with consistent plugin prefix.
+ * Centralized nonce management with a fixed plugin prefix.
+ *
+ * The class is intentionally identical (modulo the namespace and PREFIX
+ * value) across every leastudios-* plugin — see
+ * `leastudios-dev-tools/bin/check-shared.sh` for the drift guard.
  */
-class Nonce {
+final class Nonce {
 
 	/**
-	 * Nonce prefix for all plugin nonces.
+	 * Nonce prefix for all of this plugin's nonces.
 	 */
 	private const PREFIX = 'leastudios_payments_';
 
 	/**
-	 * Create a nonce.
+	 * Create a nonce for a specific action.
 	 *
-	 * @param string $action The nonce action.
-	 * @return string The nonce token.
+	 * @param string $action The action name.
+	 * @return string The nonce value.
 	 */
 	public static function create( string $action ): string {
 		return wp_create_nonce( self::PREFIX . $action );
 	}
 
 	/**
-	 * Verify a nonce.
+	 * Verify a nonce for a specific action.
 	 *
 	 * @param string $nonce  The nonce to verify.
-	 * @param string $action The expected action.
-	 * @return bool True if valid.
+	 * @param string $action The action name.
+	 * @return bool Whether the nonce is valid.
 	 */
 	public static function verify( string $nonce, string $action ): bool {
-		return false !== wp_verify_nonce( $nonce, self::PREFIX . $action );
+		return (bool) wp_verify_nonce( $nonce, self::PREFIX . $action );
 	}
 
 	/**
-	 * Check an AJAX request nonce or die.
+	 * Verify a nonce from the request and die on failure.
 	 *
-	 * @param string $action    The expected action.
-	 * @param string $param_key The $_REQUEST key holding the nonce.
+	 * @param string $action    The action name.
+	 * @param string $param_key The request parameter key. Default '_wpnonce'.
+	 * @return void
+	 */
+	public static function check_request( string $action, string $param_key = '_wpnonce' ): void {
+		check_admin_referer( self::PREFIX . $action, $param_key );
+	}
+
+	/**
+	 * Verify an AJAX nonce and die on failure.
+	 *
+	 * @param string $action    The action name.
+	 * @param string $param_key The request parameter key. Default '_wpnonce'.
 	 * @return void
 	 */
 	public static function check_ajax( string $action, string $param_key = '_wpnonce' ): void {
