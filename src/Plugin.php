@@ -39,6 +39,7 @@ use LEAStudios\Payments\REST\Portal_Controller;
 use LEAStudios\Payments\REST\Products_Controller;
 use LEAStudios\Payments\REST\Refund_Controller;
 use LEAStudios\Payments\REST\Webhook_Controller;
+use LEAStudios\Payments\Shared\Container;
 use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Product_Sync;
 use LEAStudios\Payments\Stripe\Stripe_Client;
@@ -54,83 +55,17 @@ final class Plugin {
 	 * @return void
 	 */
 	public function init(): void {
-		// Run migrations.
-		$migration = new Migration();
-		$migration->maybe_migrate();
+		( new Migration() )->maybe_migrate();
 
-		// Core services.
-		$encryptor     = new Options_Encryptor();
-		$stripe_client = new Stripe_Client( $encryptor );
+		$container = new Container();
+		$this->register_services( $container );
 
-		// Repositories.
-		$product_repo       = new Product_Repository();
-		$price_repo         = new Price_Repository();
-		$order_repo         = new Order_Repository();
-		$subscription_repo  = new Subscription_Repository();
-		$webhook_event_repo = new Webhook_Event_Repository();
+		$this->register_handlers( $container );
+		$this->register_rest_routes( $container );
+		$this->register_frontend_render( $container );
 
-		// Stripe services.
-		$product_sync     = new Product_Sync( $stripe_client, $product_repo, $price_repo );
-		$customer_manager = new Customer_Manager( $stripe_client );
-
-		// Checkout and webhook handlers.
-		$session_factory  = new Session_Factory( $stripe_client, $customer_manager, $price_repo, $product_repo );
-		$checkout_handler = new Checkout_Handler( $stripe_client, $order_repo, $customer_manager );
-		$checkout_handler->init();
-
-		$refund_handler = new Refund_Handler( $order_repo );
-		$refund_handler->init();
-
-		$subscription_handler = new Subscription_Handler( $subscription_repo, $stripe_client, $customer_manager );
-		$subscription_handler->init();
-
-		// REST API.
-		$webhook_controller  = new Webhook_Controller( $stripe_client, $webhook_event_repo );
-		$checkout_controller = new Checkout_Controller( $session_factory );
-		$products_controller = new Products_Controller( $product_repo, $price_repo );
-		$refund_controller   = new Refund_Controller( $stripe_client, $order_repo );
-		$portal_controller   = new Portal_Controller( $stripe_client );
-
-		add_action( 'rest_api_init', [ $webhook_controller, 'register_routes' ] );
-		add_action( 'rest_api_init', [ $checkout_controller, 'register_routes' ] );
-		add_action( 'rest_api_init', [ $products_controller, 'register_routes' ] );
-		add_action( 'rest_api_init', [ $refund_controller, 'register_routes' ] );
-		add_action( 'rest_api_init', [ $portal_controller, 'register_routes' ] );
-
-		// Frontend rendering.
-		$shortcode    = new Shortcode( $stripe_client, $product_repo, $price_repo );
-		$block        = new Block( $shortcode, $product_repo, $price_repo );
-		$confirmation = new Confirmation( $stripe_client, $customer_manager );
-
-		$account = new Account( $customer_manager );
-
-		add_action( 'init', [ $shortcode, 'register' ] );
-		add_action( 'init', [ $block, 'register' ] );
-		add_action( 'init', [ $confirmation, 'register' ] );
-		add_action( 'init', [ $account, 'register' ] );
-
-		// Admin.
 		if ( is_admin() ) {
-			$settings_page = new Settings_Page( $encryptor );
-			$settings_page->init();
-
-			$products_page = new Products_Page( $product_repo, $price_repo, $product_sync );
-			$products_page->init();
-
-			$orders_page = new Orders_Page( $order_repo, $stripe_client );
-			$orders_page->init();
-
-			$subscriptions_page = new Subscriptions_Page( $subscription_repo, $stripe_client );
-			$subscriptions_page->init();
-
-			$customers_page = new Customers_Page( $stripe_client );
-			$customers_page->init();
-
-			$tags_page = new Tags_Reference_Page();
-			$tags_page->init();
-
-			$dashboard_widget = new Dashboard_Widget( $order_repo, $subscription_repo, $stripe_client );
-			$dashboard_widget->init();
+			$this->init_admin( $container );
 		}
 
 		/**
@@ -140,6 +75,142 @@ final class Plugin {
 		 *
 		 * @param Stripe_Client $stripe_client The Stripe client instance.
 		 */
-		do_action( 'leastudios_payments_initialized', $stripe_client );
+		do_action( 'leastudios_payments_initialized', $container->get( 'stripe_client' ) );
+	}
+
+	/**
+	 * Register every service factory on the container. Each `set()` is a
+	 * lazy closure — services are constructed on first `get()` and cached.
+	 *
+	 * @param Container $c Container to populate.
+	 *
+	 * @return void
+	 */
+	private function register_services( Container $c ): void {
+		// Core.
+		$c->set( 'encryptor', static fn() => new Options_Encryptor() );
+		$c->set( 'stripe_client', static fn( Container $c ) => new Stripe_Client( $c->get( 'encryptor' ) ) );
+
+		// Repositories.
+		$c->set( 'product_repo', static fn() => new Product_Repository() );
+		$c->set( 'price_repo', static fn() => new Price_Repository() );
+		$c->set( 'order_repo', static fn() => new Order_Repository() );
+		$c->set( 'subscription_repo', static fn() => new Subscription_Repository() );
+		$c->set( 'webhook_event_repo', static fn() => new Webhook_Event_Repository() );
+
+		// Stripe-side services.
+		$c->set(
+			'product_sync',
+			static fn( Container $c ) => new Product_Sync(
+				$c->get( 'stripe_client' ),
+				$c->get( 'product_repo' ),
+				$c->get( 'price_repo' )
+			)
+		);
+		$c->set(
+			'customer_manager',
+			static fn( Container $c ) => new Customer_Manager( $c->get( 'stripe_client' ) )
+		);
+
+		// Checkout flow.
+		$c->set(
+			'session_factory',
+			static fn( Container $c ) => new Session_Factory(
+				$c->get( 'stripe_client' ),
+				$c->get( 'customer_manager' ),
+				$c->get( 'price_repo' ),
+				$c->get( 'product_repo' )
+			)
+		);
+		$c->set(
+			'checkout_handler',
+			static fn( Container $c ) => new Checkout_Handler(
+				$c->get( 'stripe_client' ),
+				$c->get( 'order_repo' ),
+				$c->get( 'customer_manager' )
+			)
+		);
+		$c->set(
+			'refund_handler',
+			static fn( Container $c ) => new Refund_Handler( $c->get( 'order_repo' ) )
+		);
+		$c->set(
+			'subscription_handler',
+			static fn( Container $c ) => new Subscription_Handler(
+				$c->get( 'subscription_repo' ),
+				$c->get( 'stripe_client' ),
+				$c->get( 'customer_manager' )
+			)
+		);
+	}
+
+	/**
+	 * Wire the always-on handlers (run for both REST and admin requests).
+	 *
+	 * @param Container $c Service container.
+	 *
+	 * @return void
+	 */
+	private function register_handlers( Container $c ): void {
+		$c->get( 'checkout_handler' )->init();
+		$c->get( 'refund_handler' )->init();
+		$c->get( 'subscription_handler' )->init();
+	}
+
+	/**
+	 * Register every REST controller on the `rest_api_init` hook.
+	 *
+	 * @param Container $c Service container.
+	 *
+	 * @return void
+	 */
+	private function register_rest_routes( Container $c ): void {
+		$webhook_controller  = new Webhook_Controller( $c->get( 'stripe_client' ), $c->get( 'webhook_event_repo' ) );
+		$checkout_controller = new Checkout_Controller( $c->get( 'session_factory' ) );
+		$products_controller = new Products_Controller( $c->get( 'product_repo' ), $c->get( 'price_repo' ) );
+		$refund_controller   = new Refund_Controller( $c->get( 'stripe_client' ), $c->get( 'order_repo' ) );
+		$portal_controller   = new Portal_Controller( $c->get( 'stripe_client' ) );
+
+		add_action( 'rest_api_init', [ $webhook_controller, 'register_routes' ] );
+		add_action( 'rest_api_init', [ $checkout_controller, 'register_routes' ] );
+		add_action( 'rest_api_init', [ $products_controller, 'register_routes' ] );
+		add_action( 'rest_api_init', [ $refund_controller, 'register_routes' ] );
+		add_action( 'rest_api_init', [ $portal_controller, 'register_routes' ] );
+	}
+
+	/**
+	 * Register frontend shortcode / block / account renderers on `init`.
+	 *
+	 * @param Container $c Service container.
+	 *
+	 * @return void
+	 */
+	private function register_frontend_render( Container $c ): void {
+		$shortcode    = new Shortcode( $c->get( 'stripe_client' ), $c->get( 'product_repo' ), $c->get( 'price_repo' ) );
+		$block        = new Block( $shortcode, $c->get( 'product_repo' ), $c->get( 'price_repo' ) );
+		$confirmation = new Confirmation( $c->get( 'stripe_client' ), $c->get( 'customer_manager' ) );
+		$account      = new Account( $c->get( 'customer_manager' ) );
+
+		add_action( 'init', [ $shortcode, 'register' ] );
+		add_action( 'init', [ $block, 'register' ] );
+		add_action( 'init', [ $confirmation, 'register' ] );
+		add_action( 'init', [ $account, 'register' ] );
+	}
+
+	/**
+	 * Initialize admin pages and the dashboard widget.
+	 *
+	 * @param Container $c Service container.
+	 *
+	 * @return void
+	 */
+	private function init_admin( Container $c ): void {
+		( new Settings_Page( $c->get( 'encryptor' ) ) )->init();
+		( new Products_Page( $c->get( 'product_repo' ), $c->get( 'price_repo' ), $c->get( 'product_sync' ) ) )->init();
+		( new Orders_Page( $c->get( 'order_repo' ), $c->get( 'stripe_client' ) ) )->init();
+		( new Subscriptions_Page( $c->get( 'subscription_repo' ), $c->get( 'stripe_client' ) ) )->init();
+		( new Customers_Page( $c->get( 'stripe_client' ) ) )->init();
+		( new Tags_Reference_Page() )->init();
+		( new Dashboard_Widget( $c->get( 'order_repo' ), $c->get( 'subscription_repo' ), $c->get( 'stripe_client' ) ) )->init();
 	}
 }
