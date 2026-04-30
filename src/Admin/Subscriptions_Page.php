@@ -78,7 +78,7 @@ class Subscriptions_Page {
 			return;
 		}
 
-		$table = new Subscriptions_List_Table( $this->subscription_repository );
+		$table = new Subscriptions_List_Table( $this->subscription_repository, $this->stripe_client );
 		$table->prepare_items();
 
 		?>
@@ -134,8 +134,16 @@ class Subscriptions_Page {
 
 		try {
 			if ( 'cancel_now' === $action ) {
-				$stripe_sub = \Stripe\Subscription::retrieve( $subscription->stripe_subscription_id );
-				$stripe_sub->cancel();
+				// Static `cancel` is a single round-trip (vs retrieve+cancel)
+				// and avoids a TOCTOU window between the two API calls.
+				// Stripe's PHP SDK exposes class-level cancel via the Service
+				// pattern, but its stubs only declare it as an instance method.
+				// Stripe\Subscription::cancel is exposed as a class-level
+				// service method at runtime; the SDK stubs only declare the
+				// instance form, so we ignore the static-call inference.
+				// phpcs:ignore Squiz.Commenting.InlineComment.InvalidEndChar -- @phpstan-ignore directive must not end with punctuation.
+				// @phpstan-ignore method.staticCall
+				\Stripe\Subscription::cancel( $subscription->stripe_subscription_id );
 
 				$this->subscription_repository->update(
 					$sub_id,

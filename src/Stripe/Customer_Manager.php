@@ -88,6 +88,67 @@ class Customer_Manager {
 	}
 
 	/**
+	 * Resolve the WP user id that owns a given Stripe customer id.
+	 *
+	 * Reverse-looks up users whose META_KEY user-meta value matches the
+	 * given Stripe customer id. Returns null if no such user exists. This
+	 * is the source of truth used to decide whether to trust an arbitrary
+	 * `metadata.wp_user_id` claim arriving in a webhook payload — the claim
+	 * is only trusted if it agrees with this lookup.
+	 *
+	 * @param string $customer_id The Stripe Customer ID.
+	 * @return int|null The matching WP user ID, or null if no mapping exists.
+	 */
+	public function find_user_by_customer_id( string $customer_id ): ?int {
+		if ( '' === $customer_id ) {
+			return null;
+		}
+
+		// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- targeted single-row reverse lookup; we have no other handle on the customer mapping.
+		$users = get_users(
+			[
+				'meta_key'   => self::META_KEY,
+				'meta_value' => $customer_id,
+				'number'     => 1,
+				'fields'     => 'ID',
+			]
+		);
+		// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+
+		if ( empty( $users ) ) {
+			return null;
+		}
+
+		return (int) $users[0];
+	}
+
+	/**
+	 * Resolve a trusted WP user id for a webhook event.
+	 *
+	 * Webhook payloads carry a `metadata.wp_user_id` claim that is
+	 * attacker-influenceable (anyone with API access to the Stripe account
+	 * can set metadata). We only trust the claim if the local customer
+	 * mapping agrees; otherwise we fall back to a reverse lookup keyed on
+	 * the customer id, and finally to null. The returned id is safe to use
+	 * as a foreign key on local tables.
+	 *
+	 * @param string   $customer_id      The Stripe customer id from the payload.
+	 * @param int|null $claimed_user_id  The wp_user_id from event metadata, if any.
+	 * @return int|null The verified WP user id, or null if none can be trusted.
+	 */
+	public function resolve_user_id( string $customer_id, ?int $claimed_user_id ): ?int {
+		if ( null !== $claimed_user_id && $claimed_user_id > 0 ) {
+			$mapped = $this->get_customer_id( $claimed_user_id );
+
+			if ( null !== $mapped && $mapped === $customer_id ) {
+				return $claimed_user_id;
+			}
+		}
+
+		return $this->find_user_by_customer_id( $customer_id );
+	}
+
+	/**
 	 * Create a new Stripe Customer from a WordPress user.
 	 *
 	 * @param int $user_id The WordPress user ID.
@@ -114,6 +175,13 @@ class Customer_Manager {
 			$args['name'] = $user->display_name;
 		}
 
+		// Including the email lets Stripe send receipts and improves
+		// dashboard search ergonomics for accounting/refund flows. The
+		// WP user_email is the canonical identifier we already trust.
+		if ( ! empty( $user->user_email ) && is_email( $user->user_email ) ) {
+			$args['email'] = $user->user_email;
+		}
+
 		/**
 		 * Filters the Stripe Customer creation arguments.
 		 *
@@ -126,7 +194,13 @@ class Customer_Manager {
 		$args = apply_filters( 'leastudios_payments_stripe_customer_args', $args, $user_id );
 
 		try {
-			$customer = \Stripe\Customer::create( $args );
+			// Idempotency key keyed on the WP user id so retried creates
+			// (network blip, proxy replay, double-clicked admin action)
+			// return the original customer instead of duplicating it.
+			$customer = \Stripe\Customer::create(
+				$args,
+				[ 'idempotency_key' => 'lsc_u' . $user_id ]
+			);
 			return $customer->id;
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {

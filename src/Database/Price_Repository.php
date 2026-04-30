@@ -166,11 +166,32 @@ class Price_Repository {
 
 		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
+		static $format_map = [
+			'id'                       => '%d',
+			'stripe_price_id'          => '%s',
+			'product_id'               => '%d',
+			'amount'                   => '%d',
+			'currency'                 => '%s',
+			'type'                     => '%s',
+			'recurring_interval'       => '%s',
+			'recurring_interval_count' => '%d',
+			'status'                   => '%s',
+			'created_at'               => '%s',
+			'updated_at'               => '%s',
+		];
+
+		$formats = [];
+		foreach ( array_keys( $data ) as $column ) {
+			$formats[] = $format_map[ $column ] ?? '%s';
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(
 			$this->table(),
 			$data,
 			[ 'id' => $id ],
+			$formats,
+			[ '%d' ]
 		);
 
 		return false !== $result;

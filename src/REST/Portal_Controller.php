@@ -120,11 +120,20 @@ class Portal_Controller extends WP_REST_Controller {
 		}
 
 		try {
+			// 60-second idempotency window: a refresh or double-click within
+			// the same minute returns the original portal session URL.
+			$idempotency_key = sprintf(
+				'lsp_u%d_w%d',
+				$user_id,
+				(int) floor( time() / 60 )
+			);
+
 			$session = \Stripe\BillingPortal\Session::create(
 				[
 					'customer'   => $customer_id,
 					'return_url' => $return_url,
-				]
+				],
+				[ 'idempotency_key' => $idempotency_key ]
 			);
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {

@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Subscription_Repository;
 use LEAStudios\Payments\Shared\Datetime_Util;
+use LEAStudios\Payments\Stripe\Stripe_Client;
 
 // Load WP_List_Table if not available.
 if ( ! class_exists( 'WP_List_Table' ) ) {
@@ -29,9 +30,11 @@ class Subscriptions_List_Table extends \WP_List_Table {
 	 * Constructor.
 	 *
 	 * @param Subscription_Repository $subscription_repository The subscription repository.
+	 * @param Stripe_Client           $stripe_client           Stripe client (used to detect test mode for dashboard links).
 	 */
 	public function __construct(
 		private readonly Subscription_Repository $subscription_repository,
+		private readonly Stripe_Client $stripe_client,
 	) {
 		parent::__construct(
 			[
@@ -264,9 +267,12 @@ class Subscriptions_List_Table extends \WP_List_Table {
 			);
 		}
 
-		// Link to Stripe Dashboard.
-		$stripe_url = 'https://dashboard.stripe.com/test/subscriptions/' . $item->stripe_subscription_id;
-		$actions[]  = sprintf(
+		// Link to Stripe Dashboard. Stripe serves test-mode resources on
+		// `/test/…` and live-mode resources on the bare path; using the
+		// wrong one in live mode lands the admin on a 404.
+		$dashboard_path = $this->stripe_client->is_test_mode() ? '/test/subscriptions/' : '/subscriptions/';
+		$stripe_url     = 'https://dashboard.stripe.com' . $dashboard_path . $item->stripe_subscription_id;
+		$actions[]      = sprintf(
 			'<a href="%s" target="_blank" rel="noopener noreferrer">%s &#8599;</a>',
 			esc_url( $stripe_url ),
 			esc_html__( 'Stripe', 'leastudios-payments' )

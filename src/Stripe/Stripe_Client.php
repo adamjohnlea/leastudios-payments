@@ -20,6 +20,17 @@ use LEAStudios\Payments\Encryption\Options_Encryptor;
 class Stripe_Client {
 
 	/**
+	 * Stripe API version this plugin is pinned to. Pinning is important
+	 * because Stripe rolls schema changes silently on the account-default
+	 * version: notably, in 2025-04-30 the subscription `current_period_*`
+	 * fields moved from the subscription object to the subscription-item
+	 * level. The handlers in this plugin read those fields at the top
+	 * level, so we explicitly request the pre-move version. When updating
+	 * this constant, also audit the webhook handlers in src/Checkout/.
+	 */
+	private const STRIPE_API_VERSION = '2024-06-20';
+
+	/**
 	 * Whether the API key has been set on the SDK.
 	 *
 	 * @var bool
@@ -52,6 +63,7 @@ class Stripe_Client {
 		}
 
 		\Stripe\Stripe::setApiKey( $secret_key );
+		\Stripe\Stripe::setApiVersion( self::STRIPE_API_VERSION );
 		\Stripe\Stripe::setAppInfo( 'leaStudios Payments', LEASTUDIOS_PAYMENTS_VERSION, 'https://leastudios.com' );
 
 		$this->initialized = true;

@@ -186,11 +186,30 @@ class Product_Repository {
 
 		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
+		static $format_map = [
+			'id'                => '%d',
+			'stripe_product_id' => '%s',
+			'name'              => '%s',
+			'description'       => '%s',
+			'image_url'         => '%s',
+			'status'            => '%s',
+			'require_shipping'  => '%d',
+			'created_at'        => '%s',
+			'updated_at'        => '%s',
+		];
+
+		$formats = [];
+		foreach ( array_keys( $data ) as $column ) {
+			$formats[] = $format_map[ $column ] ?? '%s';
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(
 			$this->table(),
 			$data,
 			[ 'id' => $id ],
+			$formats,
+			[ '%d' ]
 		);
 
 		return false !== $result;

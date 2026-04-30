@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Order_Repository;
 use LEAStudios\Payments\Shared\Datetime_Util;
+use LEAStudios\Payments\Support\Currency_Formatter;
 
 // Load WP_List_Table if not available.
 if ( ! class_exists( 'WP_List_Table' ) ) {
@@ -205,7 +206,7 @@ class Orders_List_Table extends \WP_List_Table {
 	 * @return string Column HTML.
 	 */
 	public function column_amount_total( object $item ): string {
-		return esc_html( $this->format_amount( (int) $item->amount_total, $item->currency ) );
+		return esc_html( Currency_Formatter::format( (int) $item->amount_total, $item->currency ) );
 	}
 
 	/**
@@ -288,34 +289,5 @@ class Orders_List_Table extends \WP_List_Table {
 	 */
 	public function no_items(): void {
 		esc_html_e( 'No orders found.', 'leastudios-payments' );
-	}
-
-	/**
-	 * Format an amount for display.
-	 *
-	 * @param int    $amount   Amount in smallest currency unit.
-	 * @param string $currency Currency code.
-	 * @return string Formatted amount.
-	 */
-	private function format_amount( int $amount, string $currency ): string {
-		$symbols = [
-			'usd' => '$',
-			'gbp' => "\xc2\xa3",
-			'eur' => "\xe2\x82\xac",
-			'cad' => 'CA$',
-			'aud' => 'A$',
-			'nzd' => 'NZ$',
-			'chf' => 'CHF ',
-			'jpy' => "\xc2\xa5",
-		];
-
-		$cur    = strtolower( $currency );
-		$symbol = $symbols[ $cur ] ?? strtoupper( $currency ) . ' ';
-
-		if ( 'jpy' === $cur ) {
-			return $symbol . number_format( $amount );
-		}
-
-		return $symbol . number_format( $amount / 100, 2 );
 	}
 }
