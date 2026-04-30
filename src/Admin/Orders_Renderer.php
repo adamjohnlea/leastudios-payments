@@ -13,6 +13,7 @@ namespace LEAStudios\Payments\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Order_Repository;
+use LEAStudios\Payments\Shared\Datetime_Util;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 use LEAStudios\Payments\Support\Currency_Formatter;
 
@@ -127,12 +128,7 @@ class Orders_Renderer {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Date', 'leastudios-payments' ); ?></th>
-						<td>
-							<?php
-							$timestamp = strtotime( $order->created_at );
-							echo esc_html( false !== $timestamp ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) : $order->created_at );
-							?>
-						</td>
+						<td><?php echo esc_html( Datetime_Util::format_for_display( $order->created_at ?? null, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
 					</tr>
 					<?php if ( ! empty( $order->stripe_payment_intent_id ) ) : ?>
 						<tr>

@@ -13,6 +13,7 @@ namespace LEAStudios\Payments\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Subscription_Repository;
+use LEAStudios\Payments\Shared\Datetime_Util;
 
 // Load WP_List_Table if not available.
 if ( ! class_exists( 'WP_List_Table' ) ) {
@@ -209,13 +210,7 @@ class Subscriptions_List_Table extends \WP_List_Table {
 			return '&mdash;';
 		}
 
-		$timestamp = strtotime( $item->current_period_end );
-
-		if ( false === $timestamp ) {
-			return esc_html( $item->current_period_end );
-		}
-
-		return esc_html( wp_date( get_option( 'date_format' ), $timestamp ) );
+		return esc_html( Datetime_Util::format_for_display( $item->current_period_end, get_option( 'date_format' ) ) );
 	}
 
 	/**

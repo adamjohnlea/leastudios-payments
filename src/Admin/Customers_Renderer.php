@@ -12,6 +12,7 @@ namespace LEAStudios\Payments\Admin;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Shared\Datetime_Util;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 use LEAStudios\Payments\Support\Currency_Formatter;
 
@@ -82,10 +83,7 @@ class Customers_Renderer {
 								<td><?php echo esc_html( (string) $customer->order_count ); ?></td>
 								<td><?php echo esc_html( Currency_Formatter::format( (int) $customer->total_spent, $customer->currency ?? 'usd' ) ); ?></td>
 								<td>
-									<?php
-									$timestamp = strtotime( $customer->last_order_date );
-									echo esc_html( false !== $timestamp ? wp_date( get_option( 'date_format' ), $timestamp ) : $customer->last_order_date );
-									?>
+									<?php echo esc_html( Datetime_Util::format_for_display( $customer->last_order_date ?? null, get_option( 'date_format' ) ) ); ?>
 								</td>
 							</tr>
 						<?php endforeach; ?>
@@ -188,12 +186,7 @@ class Customers_Renderer {
 								<td><?php echo esc_html( Currency_Formatter::format( (int) $order->amount_total, $order->currency ) ); ?></td>
 								<td><?php echo esc_html( 'subscription' === ( $order->order_type ?? '' ) ? __( 'Subscription', 'leastudios-payments' ) : __( 'One-time', 'leastudios-payments' ) ); ?></td>
 								<td><?php echo esc_html( ucfirst( str_replace( '_', ' ', $order->payment_status ) ) ); ?></td>
-								<td>
-									<?php
-									$ts = strtotime( $order->created_at );
-									echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) : $order->created_at );
-									?>
-								</td>
+								<td><?php echo esc_html( Datetime_Util::format_for_display( $order->created_at ?? null, get_option( 'date_format' ) ) ); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -218,8 +211,7 @@ class Customers_Renderer {
 								<td>
 									<?php
 									if ( ! empty( $sub->current_period_end ) ) {
-										$ts = strtotime( $sub->current_period_end );
-										echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) : $sub->current_period_end );
+										echo esc_html( Datetime_Util::format_for_display( $sub->current_period_end, get_option( 'date_format' ) ) );
 									} else {
 										echo '&mdash;';
 									}

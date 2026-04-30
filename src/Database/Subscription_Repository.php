@@ -12,6 +12,8 @@ namespace LEAStudios\Payments\Database;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Shared\Datetime_Util;
+
 /**
  * CRUD operations for the subscriptions table.
  */
@@ -58,6 +60,8 @@ class Subscription_Repository {
 	public function create( array $data ): int {
 		global $wpdb;
 
+		$now_utc = Datetime_Util::utc_now_mysql();
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->insert(
 			$this->table(),
@@ -71,8 +75,10 @@ class Subscription_Repository {
 				'current_period_start'   => $data['current_period_start'] ?? null,
 				'current_period_end'     => $data['current_period_end'] ?? null,
 				'cancel_at_period_end'   => $data['cancel_at_period_end'] ?? 0,
+				'created_at'             => $now_utc,
+				'updated_at'             => $now_utc,
 			],
-			[ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d' ]
+			[ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s' ]
 		);
 
 		return false !== $result ? (int) $wpdb->insert_id : 0;
@@ -199,6 +205,8 @@ class Subscription_Repository {
 	 */
 	public function update( int $id, array $data ): bool {
 		global $wpdb;
+
+		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(

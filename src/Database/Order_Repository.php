@@ -12,6 +12,8 @@ namespace LEAStudios\Payments\Database;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Shared\Datetime_Util;
+
 /**
  * CRUD operations for the orders table.
  */
@@ -37,6 +39,8 @@ class Order_Repository {
 
 		$wp_user_id = isset( $data['wp_user_id'] ) ? (int) $data['wp_user_id'] : null;
 
+		$now_utc = Datetime_Util::utc_now_mysql();
+
 		$insert_data = [
 			'stripe_session_id'        => $data['stripe_session_id'] ?? '',
 			'stripe_payment_intent_id' => $data['stripe_payment_intent_id'] ?? '',
@@ -48,9 +52,11 @@ class Order_Repository {
 			'payment_status'           => $data['payment_status'] ?? 'paid',
 			'order_type'               => $data['order_type'] ?? 'one_time',
 			'line_items_json'          => $data['line_items_json'] ?? '[]',
+			'created_at'               => $now_utc,
+			'updated_at'               => $now_utc,
 		];
 
-		$formats = [ '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ];
+		$formats = [ '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s' ];
 
 		if ( null !== $wp_user_id ) {
 			$insert_data['wp_user_id'] = $wp_user_id;
@@ -184,6 +190,8 @@ class Order_Repository {
 	 */
 	public function update( int $id, array $data ): bool {
 		global $wpdb;
+
+		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(

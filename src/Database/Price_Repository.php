@@ -12,6 +12,8 @@ namespace LEAStudios\Payments\Database;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Shared\Datetime_Util;
+
 /**
  * CRUD operations for the prices table.
  */
@@ -49,6 +51,8 @@ class Price_Repository {
 	): int {
 		global $wpdb;
 
+		$now_utc = Datetime_Util::utc_now_mysql();
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->insert(
 			$this->table(),
@@ -61,8 +65,10 @@ class Price_Repository {
 				'recurring_interval'       => '' !== $recurring_interval ? $recurring_interval : null,
 				'recurring_interval_count' => $recurring_interval_count,
 				'status'                   => 'active',
+				'created_at'               => $now_utc,
+				'updated_at'               => $now_utc,
 			],
-			[ '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s' ]
+			[ '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ]
 		);
 
 		return false !== $result ? (int) $wpdb->insert_id : 0;
@@ -157,6 +163,8 @@ class Price_Repository {
 	 */
 	public function update( int $id, array $data ): bool {
 		global $wpdb;
+
+		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(

@@ -12,6 +12,7 @@ namespace LEAStudios\Payments\Render;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Shared\Datetime_Util;
 use LEAStudios\Payments\Stripe\Customer_Manager;
 
 /**
@@ -113,8 +114,7 @@ class Account {
 							if ( 'canceled' === $sub->status || empty( $sub->current_period_end ) ) {
 								echo '&mdash;';
 							} else {
-								$ts = strtotime( $sub->current_period_end );
-								echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) : '' );
+								echo esc_html( Datetime_Util::format_for_display( $sub->current_period_end, get_option( 'date_format' ) ) );
 							}
 							?>
 						</td>
@@ -152,12 +152,7 @@ class Account {
 				<tbody>
 					<?php foreach ( $orders as $order ) : ?>
 						<tr>
-							<td>
-								<?php
-								$ts = strtotime( $order->created_at );
-								echo esc_html( false !== $ts ? wp_date( get_option( 'date_format' ), $ts ) : '' );
-								?>
-							</td>
+							<td><?php echo esc_html( Datetime_Util::format_for_display( $order->created_at ?? null, get_option( 'date_format' ) ) ); ?></td>
 							<td><?php echo esc_html( $this->format_amount( (int) $order->amount_total, $order->currency ) ); ?></td>
 							<td><?php echo esc_html( 'subscription' === ( $order->order_type ?? '' ) ? __( 'Subscription', 'leastudios-payments' ) : __( 'One-time', 'leastudios-payments' ) ); ?></td>
 							<td><?php echo esc_html( ucfirst( str_replace( '_', ' ', $order->payment_status ) ) ); ?></td>

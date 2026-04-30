@@ -13,6 +13,7 @@ namespace LEAStudios\Payments\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Order_Repository;
+use LEAStudios\Payments\Shared\Datetime_Util;
 
 // Load WP_List_Table if not available.
 if ( ! class_exists( 'WP_List_Table' ) ) {
@@ -264,13 +265,9 @@ class Orders_List_Table extends \WP_List_Table {
 	 * @return string Column HTML.
 	 */
 	public function column_created_at( object $item ): string {
-		$timestamp = strtotime( $item->created_at );
+		$format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
-		if ( false === $timestamp ) {
-			return esc_html( $item->created_at );
-		}
-
-		return esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) );
+		return esc_html( Datetime_Util::format_for_display( $item->created_at ?? null, $format ) );
 	}
 
 	/**

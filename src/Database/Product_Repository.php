@@ -12,6 +12,8 @@ namespace LEAStudios\Payments\Database;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Shared\Datetime_Util;
+
 /**
  * CRUD operations for the products table.
  */
@@ -39,6 +41,8 @@ class Product_Repository {
 	public function create( string $stripe_product_id, string $name, string $description = '', string $image_url = '', bool $require_shipping = false ): int {
 		global $wpdb;
 
+		$now_utc = Datetime_Util::utc_now_mysql();
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->insert(
 			$this->table(),
@@ -49,8 +53,10 @@ class Product_Repository {
 				'image_url'         => $image_url,
 				'status'            => 'active',
 				'require_shipping'  => $require_shipping ? 1 : 0,
+				'created_at'        => $now_utc,
+				'updated_at'        => $now_utc,
 			],
-			[ '%s', '%s', '%s', '%s', '%s', '%d' ]
+			[ '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ]
 		);
 
 		return false !== $result ? (int) $wpdb->insert_id : 0;
@@ -177,6 +183,8 @@ class Product_Repository {
 	 */
 	public function update( int $id, array $data ): bool {
 		global $wpdb;
+
+		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(
