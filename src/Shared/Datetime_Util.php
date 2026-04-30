@@ -14,14 +14,35 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Centralises UTC↔WP-timezone conversion for stored timestamps.
  *
- * The orders, customers, products, prices, and subscriptions tables all
- * store timestamps in UTC. On display, route every conversion through
- * `format_for_display()` (which uses `get_date_from_gmt()`) instead of
- * `strtotime() + wp_date()` — the latter interprets the stored string in
- * PHP's `date.timezone` ini setting, which differs between Herd local dev
- * and production servers.
+ * Two parallel APIs ship side by side:
+ *
+ *   - **String / MySQL form** — `utc_now_mysql()`, `format_for_display()`.
+ *     Used by callers that round-trip through `$wpdb` and prefer to keep
+ *     timestamps as plain MySQL datetime strings.
+ *   - **DateTimeImmutable form** — `now()`, `from_mysql()`,
+ *     `format_immutable_for_display()`. Used by callers that prefer to
+ *     hold immutable date objects in their domain models.
+ *
+ * Entries are written via `current_time( 'mysql', true )` (GMT). On display,
+ * the same strings need converting back to the WordPress display timezone.
+ * `mysql2date()` re-labels UTC values as local without applying any offset,
+ * so use `get_date_from_gmt()` — the canonical "input is UTC, output is
+ * WP-tz" WordPress API.
+ *
+ * The class is intentionally identical (modulo the namespace) across every
+ * leastudios-* plugin that ships it — see
+ * `leastudios-dev-tools/bin/check-shared.sh` for the drift guard.
  */
 final class Datetime_Util {
+
+	/**
+	 * Current time in UTC as an immutable DateTime object.
+	 *
+	 * @return \DateTimeImmutable
+	 */
+	public static function now(): \DateTimeImmutable {
+		return new \DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) );
+	}
 
 	/**
 	 * Current time in UTC, formatted for a MySQL `datetime` column.
@@ -29,7 +50,18 @@ final class Datetime_Util {
 	 * @return string e.g. "2026-04-30 02:41:00".
 	 */
 	public static function utc_now_mysql(): string {
-		return ( new \DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) ) )->format( 'Y-m-d H:i:s' );
+		return self::now()->format( 'Y-m-d H:i:s' );
+	}
+
+	/**
+	 * Parse a stored UTC MySQL datetime string back into an immutable DateTime.
+	 *
+	 * @param string $mysql_datetime Stored UTC datetime, e.g. "2026-04-30 02:41:00".
+	 *
+	 * @return \DateTimeImmutable
+	 */
+	public static function from_mysql( string $mysql_datetime ): \DateTimeImmutable {
+		return new \DateTimeImmutable( $mysql_datetime, new \DateTimeZone( 'UTC' ) );
 	}
 
 	/**
@@ -46,5 +78,21 @@ final class Datetime_Util {
 		}
 
 		return get_date_from_gmt( $utc_mysql, $format );
+	}
+
+	/**
+	 * Convert a UTC DateTimeImmutable to a string in the WordPress display timezone.
+	 *
+	 * @param \DateTimeImmutable|null $utc    Source instant in UTC.
+	 * @param string                  $format PHP date format string.
+	 *
+	 * @return string Empty string when `$utc` is null.
+	 */
+	public static function format_immutable_for_display( ?\DateTimeImmutable $utc, string $format ): string {
+		if ( null === $utc ) {
+			return '';
+		}
+
+		return get_date_from_gmt( $utc->format( 'Y-m-d H:i:s' ), $format );
 	}
 }
