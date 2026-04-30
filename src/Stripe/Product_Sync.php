@@ -77,7 +77,19 @@ class Product_Sync {
 			 */
 			$product_args = apply_filters( 'leastudios_payments_stripe_product_args', $product_args, $name );
 
-			$stripe_product = \Stripe\Product::create( $product_args );
+			// Idempotency key keyed on the product name + minute window so a
+			// network retry of the same admin submission returns the original
+			// product instead of duplicating it.
+			$product_idempotency_key = sprintf(
+				'lspd_h%s_w%d',
+				substr( md5( $name ), 0, 12 ),
+				(int) floor( time() / 60 )
+			);
+
+			$stripe_product = \Stripe\Product::create(
+				$product_args,
+				[ 'idempotency_key' => $product_idempotency_key ]
+			);
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			$this->log_stripe_error( 'create_product', $e );
 
@@ -336,8 +348,22 @@ class Product_Sync {
 		 */
 		$price_args = apply_filters( 'leastudios_payments_stripe_price_args', $price_args, $local_product_id );
 
+		// Idempotency key keyed on the price shape so retries of the same
+		// admin submission return the original price instead of duplicating it.
+		$price_idempotency_key = sprintf(
+			'lspr_p%d_a%d_c%s_t%s_w%d',
+			$local_product_id,
+			$amount,
+			$currency,
+			$type,
+			(int) floor( time() / 60 )
+		);
+
 		try {
-			$stripe_price = \Stripe\Price::create( $price_args );
+			$stripe_price = \Stripe\Price::create(
+				$price_args,
+				[ 'idempotency_key' => $price_idempotency_key ]
+			);
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			return 0;
 		}

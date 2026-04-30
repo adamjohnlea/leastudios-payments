@@ -13,6 +13,7 @@ namespace LEAStudios\Payments\Checkout;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Order_Repository;
+use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 
 /**
@@ -25,10 +26,12 @@ class Checkout_Handler {
 	 *
 	 * @param Stripe_Client    $stripe_client    The Stripe client.
 	 * @param Order_Repository $order_repository The order repository.
+	 * @param Customer_Manager $customer_manager Maps Stripe customers to WP users.
 	 */
 	public function __construct(
 		private readonly Stripe_Client $stripe_client,
 		private readonly Order_Repository $order_repository,
+		private readonly Customer_Manager $customer_manager,
 	) {}
 
 	/**
@@ -93,24 +96,21 @@ class Checkout_Handler {
 			$line_items_json = '[]';
 		}
 
-		// Resolve WP user ID from metadata or customer.
-		$wp_user_id = null;
-		$metadata   = $session_data['metadata'] ?? [];
-
-		if ( ! empty( $metadata['wp_user_id'] ) ) {
-			$wp_user_id = (int) $metadata['wp_user_id'];
-		}
-
 		// Extract customer details.
-		$customer_id    = $session_data['customer'] ?? '';
+		$customer_id    = is_string( $session_data['customer'] ?? null ) ? $session_data['customer'] : '';
 		$customer_email = $session_data['customer_details']['email'] ?? ( $session_data['customer_email'] ?? '' );
 		$customer_name  = $session_data['customer_details']['name'] ?? '';
 
 		// Determine order type from the session mode.
 		$order_type = 'subscription' === ( $session_data['mode'] ?? 'payment' ) ? 'subscription' : 'one_time';
 
-		// Ensure wp_user_id is an integer or null.
-		$wp_user_id = null !== $wp_user_id && $wp_user_id > 0 ? $wp_user_id : null;
+		// Resolve the WP user id via the verified customer mapping. The
+		// `metadata.wp_user_id` claim is attacker-influenceable, so we only
+		// trust it if Customer_Manager confirms the local mapping; otherwise
+		// we fall back to a reverse lookup, and finally to null.
+		$metadata        = $session_data['metadata'] ?? [];
+		$claimed_user_id = isset( $metadata['wp_user_id'] ) ? (int) $metadata['wp_user_id'] : null;
+		$wp_user_id      = $this->customer_manager->resolve_user_id( $customer_id, $claimed_user_id );
 
 		// Create the order record.
 		$order_id = $this->order_repository->create(
@@ -130,9 +130,17 @@ class Checkout_Handler {
 		);
 
 		if ( 0 === $order_id ) {
-			global $wpdb;
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-			error_log( '[leaStudios Payments] Failed to create order for session: ' . $session_id . ' | Last DB error: ' . $wpdb->last_error );
+			// On many shared hosts the PHP error log is web-accessible, so we
+			// log only a stable error code in production. The verbose form,
+			// including $wpdb->last_error, is gated on WP_DEBUG.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				global $wpdb;
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[leaStudios Payments] Failed to create order for session: ' . $session_id . ' | Last DB error: ' . $wpdb->last_error );
+			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[leaStudios Payments] order_create_failed for session_id=' . $session_id );
+			}
 		}
 
 		if ( $order_id > 0 ) {

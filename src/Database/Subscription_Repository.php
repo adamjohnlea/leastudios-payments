@@ -213,8 +213,40 @@ class Subscription_Repository {
 			$this->table(),
 			$data,
 			[ 'id' => $id ],
+			self::format_for_columns( array_keys( $data ) ),
+			[ '%d' ]
 		);
 
 		return false !== $result;
+	}
+
+	/**
+	 * Map subscription column names to wpdb format placeholders.
+	 *
+	 * @param array<int, string> $columns Column names being written.
+	 * @return array<int, string>
+	 */
+	private static function format_for_columns( array $columns ): array {
+		static $map = [
+			'id'                     => '%d',
+			'stripe_subscription_id' => '%s',
+			'stripe_customer_id'     => '%s',
+			'stripe_price_id'        => '%s',
+			'customer_email'         => '%s',
+			'wp_user_id'             => '%d',
+			'status'                 => '%s',
+			'current_period_start'   => '%s',
+			'current_period_end'     => '%s',
+			'cancel_at_period_end'   => '%d',
+			'created_at'             => '%s',
+			'updated_at'             => '%s',
+		];
+
+		$formats = [];
+		foreach ( $columns as $column ) {
+			$formats[] = $map[ $column ] ?? '%s';
+		}
+
+		return $formats;
 	}
 }

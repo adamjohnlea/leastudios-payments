@@ -193,14 +193,56 @@ class Order_Repository {
 
 		$data['updated_at'] = Datetime_Util::utc_now_mysql();
 
+		$formats = self::format_for_columns( array_keys( $data ) );
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(
 			$this->table(),
 			$data,
 			[ 'id' => $id ],
+			$formats,
+			[ '%d' ]
 		);
 
 		return false !== $result;
+	}
+
+	/**
+	 * Map order column names to wpdb format placeholders.
+	 *
+	 * Without explicit formats, $wpdb->update infers everything as %s,
+	 * which works because prepare() does the casting — but it loses the
+	 * type signal that protects numeric columns from accidental string
+	 * insertion (e.g. "5; DROP TABLE…" being silently coerced to 0).
+	 *
+	 * @param array<int, string> $columns Column names being written.
+	 * @return array<int, string>
+	 */
+	private static function format_for_columns( array $columns ): array {
+		static $map = [
+			'id'                       => '%d',
+			'stripe_session_id'        => '%s',
+			'stripe_payment_intent_id' => '%s',
+			'stripe_customer_id'       => '%s',
+			'customer_email'           => '%s',
+			'customer_name'            => '%s',
+			'wp_user_id'               => '%d',
+			'amount_total'             => '%d',
+			'currency'                 => '%s',
+			'payment_status'           => '%s',
+			'order_type'               => '%s',
+			'refunded_amount'          => '%d',
+			'line_items_json'          => '%s',
+			'created_at'               => '%s',
+			'updated_at'               => '%s',
+		];
+
+		$formats = [];
+		foreach ( $columns as $column ) {
+			$formats[] = $map[ $column ] ?? '%s';
+		}
+
+		return $formats;
 	}
 
 	/**

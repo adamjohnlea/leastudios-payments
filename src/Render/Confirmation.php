@@ -12,7 +12,9 @@ namespace LEAStudios\Payments\Render;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Stripe_Client;
+use LEAStudios\Payments\Support\Currency_Formatter;
 
 /**
  * Registers the [leastudios_payment_confirmation] shortcode that displays
@@ -26,19 +28,23 @@ use LEAStudios\Payments\Stripe\Stripe_Client;
 class Confirmation {
 
 	/**
-	 * Cached session data to avoid multiple API calls on the same page.
+	 * Per-session-id cache of Stripe session payloads, so two shortcodes on
+	 * one page making API calls for distinct ids do not collide and a single
+	 * shortcode rendered twice does not double-call Stripe.
 	 *
-	 * @var array<string, mixed>|null
+	 * @var array<string, array<string, mixed>>
 	 */
-	private ?array $session_cache = null;
+	private array $session_cache = [];
 
 	/**
 	 * Constructor.
 	 *
-	 * @param Stripe_Client $stripe_client The Stripe client.
+	 * @param Stripe_Client    $stripe_client    The Stripe client.
+	 * @param Customer_Manager $customer_manager Maps WP users to Stripe customers (used to verify the current viewer owns the session being displayed).
 	 */
 	public function __construct(
 		private readonly Stripe_Client $stripe_client,
+		private readonly Customer_Manager $customer_manager,
 	) {}
 
 	/**
@@ -86,14 +92,49 @@ class Confirmation {
 			return '';
 		}
 
+		// PII gate: a Stripe Checkout session id is unguessable in practice,
+		// but it leaks to analytics and Referer headers from the success
+		// page. If the session belongs to a Stripe customer we have mapped
+		// to a WP user, only render the PII-bearing fields when the current
+		// viewer is that user. Anonymous viewers (or different users) get
+		// the generic "thank you" template with PII tags resolved to empty.
+		$redact_pii = ! $this->viewer_owns_session( $session_data );
+
 		// If no custom content provided, use default template.
 		if ( empty( $content ) ) {
 			$content = $this->get_default_template();
 		}
 
-		$output = $this->replace_tags( $content, $session_data );
+		$output = $this->replace_tags( $content, $session_data, $redact_pii );
 
 		return '<div class="leastudios-payments-confirmation">' . wp_kses_post( $output ) . '</div>';
+	}
+
+	/**
+	 * Decide whether the current viewer is the owner of the session.
+	 *
+	 * Returns true when the session has no associated Stripe customer (e.g.
+	 * guest checkout — nothing to verify against), or when the current WP
+	 * user's stored Stripe customer id matches the session's customer.
+	 *
+	 * @param array<string, mixed> $session_data The Stripe session payload.
+	 * @return bool
+	 */
+	private function viewer_owns_session( array $session_data ): bool {
+		$session_customer = $session_data['customer'] ?? '';
+
+		if ( ! is_string( $session_customer ) || '' === $session_customer ) {
+			return true;
+		}
+
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return false;
+		}
+
+		$user_customer = $this->customer_manager->get_customer_id( $user_id );
+
+		return null !== $user_customer && $user_customer === $session_customer;
 	}
 
 	/**
@@ -101,9 +142,11 @@ class Confirmation {
 	 *
 	 * @param string               $content      The content with merge tags.
 	 * @param array<string, mixed> $session_data The Stripe session data.
+	 * @param bool                 $redact_pii   When true, replace PII-bearing
+	 *                                           tags with empty strings.
 	 * @return string Content with tags replaced.
 	 */
-	private function replace_tags( string $content, array $session_data ): string {
+	private function replace_tags( string $content, array $session_data, bool $redact_pii = false ): string {
 		$customer_name  = $session_data['customer_details']['name'] ?? '';
 		$customer_email = $session_data['customer_details']['email'] ?? '';
 		$amount_total   = (int) ( $session_data['amount_total'] ?? 0 );
@@ -119,18 +162,18 @@ class Confirmation {
 		}
 
 		$tags = [
-			'{customer_name}'  => esc_html( $customer_name ),
-			'{customer_email}' => esc_html( $customer_email ),
-			'{amount}'         => esc_html( $this->format_amount( $amount_total, $currency ) ),
+			'{customer_name}'  => $redact_pii ? '' : esc_html( $customer_name ),
+			'{customer_email}' => $redact_pii ? '' : esc_html( $customer_email ),
+			'{amount}'         => $redact_pii ? '' : esc_html( Currency_Formatter::format( $amount_total, $currency ) ),
 			'{currency}'       => esc_html( strtoupper( $currency ) ),
-			'{product_name}'   => esc_html( $product_name ),
+			'{product_name}'   => $redact_pii ? '' : esc_html( $product_name ),
 			'{payment_status}' => esc_html( ucfirst( $payment_status ) ),
 			'{order_type}'     => 'subscription' === $mode
 				? esc_html__( 'Subscription', 'leastudios-payments' )
 				: esc_html__( 'One-time payment', 'leastudios-payments' ),
 			'{date}'           => esc_html( wp_date( get_option( 'date_format' ) ) ),
-			'{session_id}'     => esc_html( $session_data['id'] ?? '' ),
-			'{payment_id}'     => esc_html( $session_data['payment_intent'] ?? '' ),
+			'{session_id}'     => $redact_pii ? '' : esc_html( $session_data['id'] ?? '' ),
+			'{payment_id}'     => $redact_pii ? '' : esc_html( $session_data['payment_intent'] ?? '' ),
 		];
 
 		/**
@@ -154,8 +197,8 @@ class Confirmation {
 	 * @return array<string, mixed>|null The session data, or null on failure.
 	 */
 	private function get_session_data( string $session_id ): ?array {
-		if ( null !== $this->session_cache ) {
-			return $this->session_cache;
+		if ( isset( $this->session_cache[ $session_id ] ) ) {
+			return $this->session_cache[ $session_id ];
 		}
 
 		if ( ! $this->stripe_client->initialize() ) {
@@ -170,9 +213,9 @@ class Confirmation {
 				]
 			);
 
-			$this->session_cache = $session->toArray();
+			$this->session_cache[ $session_id ] = $session->toArray();
 
-			return $this->session_cache;
+			return $this->session_cache[ $session_id ];
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -197,34 +240,5 @@ class Confirmation {
 			. '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">' . esc_html__( 'Amount', 'leastudios-payments' ) . '</td><td style="padding:8px;border:1px solid #ddd;">{amount}</td></tr>'
 			. '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">' . esc_html__( 'Type', 'leastudios-payments' ) . '</td><td style="padding:8px;border:1px solid #ddd;">{order_type}</td></tr>'
 			. '</table>';
-	}
-
-	/**
-	 * Format an amount for display.
-	 *
-	 * @param int    $amount   Amount in smallest currency unit.
-	 * @param string $currency Currency code.
-	 * @return string Formatted amount.
-	 */
-	private function format_amount( int $amount, string $currency ): string {
-		$symbols = [
-			'usd' => '$',
-			'gbp' => "\xc2\xa3",
-			'eur' => "\xe2\x82\xac",
-			'cad' => 'CA$',
-			'aud' => 'A$',
-			'nzd' => 'NZ$',
-			'chf' => 'CHF ',
-			'jpy' => "\xc2\xa5",
-		];
-
-		$cur    = strtolower( $currency );
-		$symbol = $symbols[ $cur ] ?? strtoupper( $currency ) . ' ';
-
-		if ( 'jpy' === $cur ) {
-			return $symbol . number_format( $amount );
-		}
-
-		return $symbol . number_format( $amount / 100, 2 );
 	}
 }

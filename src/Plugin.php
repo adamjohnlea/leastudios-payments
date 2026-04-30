@@ -28,6 +28,7 @@ use LEAStudios\Payments\Database\Order_Repository;
 use LEAStudios\Payments\Database\Price_Repository;
 use LEAStudios\Payments\Database\Product_Repository;
 use LEAStudios\Payments\Database\Subscription_Repository;
+use LEAStudios\Payments\Database\Webhook_Event_Repository;
 use LEAStudios\Payments\Encryption\Options_Encryptor;
 use LEAStudios\Payments\Render\Account;
 use LEAStudios\Payments\Render\Block;
@@ -62,10 +63,11 @@ final class Plugin {
 		$stripe_client = new Stripe_Client( $encryptor );
 
 		// Repositories.
-		$product_repo      = new Product_Repository();
-		$price_repo        = new Price_Repository();
-		$order_repo        = new Order_Repository();
-		$subscription_repo = new Subscription_Repository();
+		$product_repo       = new Product_Repository();
+		$price_repo         = new Price_Repository();
+		$order_repo         = new Order_Repository();
+		$subscription_repo  = new Subscription_Repository();
+		$webhook_event_repo = new Webhook_Event_Repository();
 
 		// Stripe services.
 		$product_sync     = new Product_Sync( $stripe_client, $product_repo, $price_repo );
@@ -73,17 +75,17 @@ final class Plugin {
 
 		// Checkout and webhook handlers.
 		$session_factory  = new Session_Factory( $stripe_client, $customer_manager, $price_repo, $product_repo );
-		$checkout_handler = new Checkout_Handler( $stripe_client, $order_repo );
+		$checkout_handler = new Checkout_Handler( $stripe_client, $order_repo, $customer_manager );
 		$checkout_handler->init();
 
 		$refund_handler = new Refund_Handler( $order_repo );
 		$refund_handler->init();
 
-		$subscription_handler = new Subscription_Handler( $subscription_repo, $stripe_client );
+		$subscription_handler = new Subscription_Handler( $subscription_repo, $stripe_client, $customer_manager );
 		$subscription_handler->init();
 
 		// REST API.
-		$webhook_controller  = new Webhook_Controller( $stripe_client );
+		$webhook_controller  = new Webhook_Controller( $stripe_client, $webhook_event_repo );
 		$checkout_controller = new Checkout_Controller( $session_factory );
 		$products_controller = new Products_Controller( $product_repo, $price_repo );
 		$refund_controller   = new Refund_Controller( $stripe_client, $order_repo );
@@ -98,7 +100,7 @@ final class Plugin {
 		// Frontend rendering.
 		$shortcode    = new Shortcode( $stripe_client, $product_repo, $price_repo );
 		$block        = new Block( $shortcode, $product_repo, $price_repo );
-		$confirmation = new Confirmation( $stripe_client );
+		$confirmation = new Confirmation( $stripe_client, $customer_manager );
 
 		$account = new Account( $customer_manager );
 

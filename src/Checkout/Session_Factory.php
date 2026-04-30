@@ -153,7 +153,20 @@ class Session_Factory {
 		$session_args = apply_filters( 'leastudios_payments_checkout_session_args', $session_args, $price_id, $user_id );
 
 		try {
-			$session = \Stripe\Checkout\Session::create( $session_args );
+			// 60-second idempotency window: a double-clicked Buy button or a
+			// proxy retry within the same minute returns the original session.
+			// After 60s a fresh checkout attempt creates a new session.
+			$idempotency_key = sprintf(
+				'lss_u%d_p%d_w%d',
+				$user_id,
+				$price_id,
+				(int) floor( time() / 60 )
+			);
+
+			$session = \Stripe\Checkout\Session::create(
+				$session_args,
+				[ 'idempotency_key' => $idempotency_key ]
+			);
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log

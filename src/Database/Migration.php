@@ -25,7 +25,7 @@ class Migration {
 	/**
 	 * Target schema version.
 	 */
-	private const SCHEMA_VERSION = 3;
+	private const SCHEMA_VERSION = 5;
 
 	/**
 	 * Get a table name with the WordPress prefix.
@@ -45,14 +45,26 @@ class Migration {
 	 * @return void
 	 */
 	public function maybe_migrate(): void {
+		// First-call short-circuit: once we've confirmed the schema is at the
+		// target version this request, skip the option-read on subsequent
+		// calls. Plugin::init runs every request and currently calls this on
+		// every page load.
+		static $checked = false;
+
+		if ( $checked ) {
+			return;
+		}
+
 		$current = (int) get_option( self::SCHEMA_VERSION_KEY, 0 );
 
 		if ( $current >= self::SCHEMA_VERSION ) {
+			$checked = true;
 			return;
 		}
 
 		$this->migrate( $current );
 		update_option( self::SCHEMA_VERSION_KEY, self::SCHEMA_VERSION );
+		$checked = true;
 	}
 
 	/**
@@ -75,6 +87,14 @@ class Migration {
 		if ( $from_version >= 1 && $from_version < 3 ) {
 			$this->add_require_shipping_column();
 		}
+
+		if ( $from_version < 4 ) {
+			$this->add_webhook_events_table();
+		}
+
+		if ( $from_version < 5 ) {
+			$this->enforce_unsigned_money_columns();
+		}
 	}
 
 	/**
@@ -87,10 +107,11 @@ class Migration {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$products_table      = self::table( 'products' );
-		$prices_table        = self::table( 'prices' );
-		$orders_table        = self::table( 'orders' );
-		$subscriptions_table = self::table( 'subscriptions' );
+		$products_table       = self::table( 'products' );
+		$prices_table         = self::table( 'prices' );
+		$orders_table         = self::table( 'orders' );
+		$subscriptions_table  = self::table( 'subscriptions' );
+		$webhook_events_table = self::table( 'webhook_events' );
 
 		$sql = "CREATE TABLE {$products_table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -111,7 +132,7 @@ class Migration {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			stripe_price_id varchar(255) NOT NULL,
 			product_id bigint(20) unsigned NOT NULL,
-			amount bigint NOT NULL,
+			amount bigint unsigned NOT NULL,
 			currency varchar(3) NOT NULL DEFAULT 'usd',
 			type varchar(20) NOT NULL DEFAULT 'one_time',
 			recurring_interval varchar(10) DEFAULT NULL,
@@ -133,11 +154,11 @@ class Migration {
 			customer_email varchar(255) NOT NULL DEFAULT '',
 			customer_name varchar(255) DEFAULT NULL,
 			wp_user_id bigint(20) unsigned DEFAULT NULL,
-			amount_total bigint NOT NULL DEFAULT 0,
+			amount_total bigint unsigned NOT NULL DEFAULT 0,
 			currency varchar(3) NOT NULL DEFAULT 'usd',
 			payment_status varchar(20) NOT NULL DEFAULT 'paid',
 			order_type varchar(20) NOT NULL DEFAULT 'one_time',
-			refunded_amount bigint NOT NULL DEFAULT 0,
+			refunded_amount bigint unsigned NOT NULL DEFAULT 0,
 			line_items_json longtext DEFAULT NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -168,9 +189,68 @@ class Migration {
 			KEY stripe_customer_id (stripe_customer_id),
 			KEY wp_user_id (wp_user_id),
 			KEY status (status)
+		) {$charset_collate};
+
+		CREATE TABLE {$webhook_events_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			stripe_event_id varchar(255) NOT NULL,
+			event_type varchar(100) NOT NULL,
+			processed_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY stripe_event_id (stripe_event_id),
+			KEY processed_at (processed_at)
 		) {$charset_collate};";
 
 		dbDelta( $sql );
+	}
+
+	/**
+	 * Add the webhook_events idempotency table for installs that predate v4.
+	 *
+	 * @return void
+	 */
+	private function add_webhook_events_table(): void {
+		global $wpdb;
+
+		$charset_collate      = $wpdb->get_charset_collate();
+		$webhook_events_table = self::table( 'webhook_events' );
+
+		$sql = "CREATE TABLE {$webhook_events_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			stripe_event_id varchar(255) NOT NULL,
+			event_type varchar(100) NOT NULL,
+			processed_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY stripe_event_id (stripe_event_id),
+			KEY processed_at (processed_at)
+		) {$charset_collate};";
+
+		dbDelta( $sql );
+	}
+
+	/**
+	 * Tighten money columns to UNSIGNED to make a negative amount unrepresentable.
+	 *
+	 * Defense-in-depth for the revenue aggregation: a buggy update path that
+	 * tried to insert a negative amount would fail at the schema level before
+	 * poisoning Dashboard_Widget::get_revenue.
+	 *
+	 * @return void
+	 */
+	private function enforce_unsigned_money_columns(): void {
+		global $wpdb;
+
+		$prices_table = self::table( 'prices' );
+		$orders_table = self::table( 'orders' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "ALTER TABLE {$prices_table} MODIFY COLUMN amount bigint unsigned NOT NULL" );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "ALTER TABLE {$orders_table} MODIFY COLUMN amount_total bigint unsigned NOT NULL DEFAULT 0" );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "ALTER TABLE {$orders_table} MODIFY COLUMN refunded_amount bigint unsigned NOT NULL DEFAULT 0" );
 	}
 
 	/**
@@ -219,7 +299,7 @@ class Migration {
 	public static function drop_tables(): void {
 		global $wpdb;
 
-		$tables = [ 'subscriptions', 'orders', 'prices', 'products' ];
+		$tables = [ 'webhook_events', 'subscriptions', 'orders', 'prices', 'products' ];
 
 		foreach ( $tables as $table ) {
 			$table_name = self::table( $table );

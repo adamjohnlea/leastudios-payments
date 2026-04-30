@@ -15,6 +15,7 @@ defined( 'ABSPATH' ) || exit;
 use LEAStudios\Payments\Database\Order_Repository;
 use LEAStudios\Payments\Database\Subscription_Repository;
 use LEAStudios\Payments\Stripe\Stripe_Client;
+use LEAStudios\Payments\Support\Currency_Formatter;
 
 /**
  * Adds a WordPress dashboard widget showing payment statistics.
@@ -110,7 +111,7 @@ class Dashboard_Widget {
 			<div class="leastudios-payments-stats">
 				<div class="leastudios-payments-stat leastudios-payments-stat--revenue">
 					<div class="leastudios-payments-stat-value">
-						<?php echo esc_html( $this->format_amount( $revenue_30d, $default_currency ) ); ?>
+						<?php echo esc_html( Currency_Formatter::format( $revenue_30d, $default_currency ) ); ?>
 					</div>
 					<div class="leastudios-payments-stat-label">
 						<?php esc_html_e( 'Revenue (30 days)', 'leastudios-payments' ); ?>
@@ -152,34 +153,5 @@ class Dashboard_Widget {
 			</p>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Format an amount for display.
-	 *
-	 * @param int    $amount   Amount in smallest currency unit.
-	 * @param string $currency Currency code.
-	 * @return string Formatted amount.
-	 */
-	private function format_amount( int $amount, string $currency ): string {
-		$symbols = [
-			'usd' => '$',
-			'gbp' => "\xc2\xa3",
-			'eur' => "\xe2\x82\xac",
-			'cad' => 'CA$',
-			'aud' => 'A$',
-			'nzd' => 'NZ$',
-			'chf' => 'CHF ',
-			'jpy' => "\xc2\xa5",
-		];
-
-		$cur    = strtolower( $currency );
-		$symbol = $symbols[ $cur ] ?? strtoupper( $currency ) . ' ';
-
-		if ( 'jpy' === $cur ) {
-			return $symbol . number_format( $amount );
-		}
-
-		return $symbol . number_format( $amount / 100, 2 );
 	}
 }

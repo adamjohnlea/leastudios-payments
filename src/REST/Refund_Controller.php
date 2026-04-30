@@ -181,7 +181,19 @@ class Refund_Controller extends WP_REST_Controller {
 			 */
 			$refund_args = apply_filters( 'leastudios_payments_refund_args', $refund_args, $order_id, $order );
 
-			\Stripe\Refund::create( $refund_args );
+			// Idempotency key: same (order, amount) tuple yields the same key
+			// on retry, so a network or proxy replay returns the original
+			// refund instead of creating a second one. The local refunded_amount
+			// changes after a successful refund, so a second refund of the
+			// same amount produces a different key and is allowed.
+			$idempotency_key = sprintf(
+				'lsr_o%d_a%d_r%d',
+				$order_id,
+				$amount,
+				(int) $order->refunded_amount
+			);
+
+			\Stripe\Refund::create( $refund_args, [ 'idempotency_key' => $idempotency_key ] );
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log

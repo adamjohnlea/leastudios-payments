@@ -13,6 +13,7 @@ namespace LEAStudios\Payments\Checkout;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Subscription_Repository;
+use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 
 /**
@@ -25,10 +26,12 @@ class Subscription_Handler {
 	 *
 	 * @param Subscription_Repository $subscription_repository The subscription repository.
 	 * @param Stripe_Client           $stripe_client           The Stripe client.
+	 * @param Customer_Manager        $customer_manager        Maps Stripe customers to WP users.
 	 */
 	public function __construct(
 		private readonly Subscription_Repository $subscription_repository,
 		private readonly Stripe_Client $stripe_client,
+		private readonly Customer_Manager $customer_manager,
 	) {}
 
 	/**
@@ -82,13 +85,13 @@ class Subscription_Handler {
 			}
 		}
 
-		// Resolve WP user ID from metadata or customer manager.
-		$wp_user_id = null;
-		$metadata   = $subscription['metadata'] ?? [];
-
-		if ( ! empty( $metadata['wp_user_id'] ) ) {
-			$wp_user_id = (int) $metadata['wp_user_id'];
-		}
+		// Resolve WP user id via the verified customer mapping. The
+		// `metadata.wp_user_id` claim is attacker-influenceable, so we only
+		// trust it if Customer_Manager confirms the local mapping; otherwise
+		// we fall back to a reverse lookup, and finally to null.
+		$metadata        = $subscription['metadata'] ?? [];
+		$claimed_user_id = isset( $metadata['wp_user_id'] ) ? (int) $metadata['wp_user_id'] : null;
+		$wp_user_id      = $this->customer_manager->resolve_user_id( $customer_id, $claimed_user_id );
 
 		// Convert timestamps.
 		$period_start = isset( $subscription['current_period_start'] )
@@ -99,7 +102,9 @@ class Subscription_Handler {
 			? gmdate( 'Y-m-d H:i:s', (int) $subscription['current_period_end'] )
 			: null;
 
-		// Map Stripe status to our local status.
+		// Map Stripe status to our local status. An unknown status falls
+		// back to `incomplete` (a safe non-active default) and is logged
+		// when WP_DEBUG is on so a future Stripe schema change is visible.
 		$local_status = match ( $status ) {
 			'active'             => 'active',
 			'past_due'           => 'past_due',
@@ -109,8 +114,13 @@ class Subscription_Handler {
 			'incomplete'         => 'incomplete',
 			'incomplete_expired' => 'canceled',
 			'paused'             => 'paused',
-			default              => $status,
+			default              => 'incomplete',
 		};
+
+		if ( 'incomplete' === $local_status && '' !== $status && 'incomplete' !== $status && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[leaStudios Payments] Unknown Stripe subscription status: ' . $status );
+		}
 
 		$this->subscription_repository->upsert(
 			[

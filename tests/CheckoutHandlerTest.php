@@ -11,6 +11,7 @@ namespace LEAStudios\Payments\Tests;
 
 use LEAStudios\Payments\Checkout\Checkout_Handler;
 use LEAStudios\Payments\Database\Order_Repository;
+use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 use LEAStudios\Tests\TestCase;
 
@@ -21,6 +22,7 @@ class CheckoutHandlerTest extends TestCase {
 
 	private Stripe_Client $stripe_client;
 	private Order_Repository $order_repository;
+	private Customer_Manager $customer_manager;
 	private Checkout_Handler $handler;
 
 	public function set_up(): void {
@@ -28,7 +30,8 @@ class CheckoutHandlerTest extends TestCase {
 
 		$this->stripe_client    = $this->createMock( Stripe_Client::class );
 		$this->order_repository = $this->createMock( Order_Repository::class );
-		$this->handler          = new Checkout_Handler( $this->stripe_client, $this->order_repository );
+		$this->customer_manager = $this->createMock( Customer_Manager::class );
+		$this->handler          = new Checkout_Handler( $this->stripe_client, $this->order_repository, $this->customer_manager );
 	}
 
 	public function test_init_registers_webhook_action(): void {

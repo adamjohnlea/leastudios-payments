@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Shared\Datetime_Util;
 use LEAStudios\Payments\Stripe\Customer_Manager;
+use LEAStudios\Payments\Support\Currency_Formatter;
 
 /**
  * Registers the [leastudios_payment_account] shortcode for displaying
@@ -153,7 +154,7 @@ class Account {
 					<?php foreach ( $orders as $order ) : ?>
 						<tr>
 							<td><?php echo esc_html( Datetime_Util::format_for_display( $order->created_at ?? null, get_option( 'date_format' ) ) ); ?></td>
-							<td><?php echo esc_html( $this->format_amount( (int) $order->amount_total, $order->currency ) ); ?></td>
+							<td><?php echo esc_html( Currency_Formatter::format( (int) $order->amount_total, $order->currency ) ); ?></td>
 							<td><?php echo esc_html( 'subscription' === ( $order->order_type ?? '' ) ? __( 'Subscription', 'leastudios-payments' ) : __( 'One-time', 'leastudios-payments' ) ); ?></td>
 							<td><?php echo esc_html( ucfirst( str_replace( '_', ' ', $order->payment_status ) ) ); ?></td>
 						</tr>
@@ -295,7 +296,7 @@ class Account {
 			return $stripe_price_id;
 		}
 
-		$label = $row->name . ' — ' . $this->format_amount( (int) $row->amount, $row->currency );
+		$label = $row->name . ' — ' . Currency_Formatter::format( (int) $row->amount, $row->currency );
 
 		if ( ! empty( $row->recurring_interval ) ) {
 			$label .= '/' . $row->recurring_interval;
@@ -316,34 +317,5 @@ class Account {
 			[],
 			LEASTUDIOS_PAYMENTS_VERSION
 		);
-	}
-
-	/**
-	 * Format an amount for display.
-	 *
-	 * @param int    $amount   Amount in smallest currency unit.
-	 * @param string $currency Currency code.
-	 * @return string Formatted amount.
-	 */
-	private function format_amount( int $amount, string $currency ): string {
-		$symbols = [
-			'usd' => '$',
-			'gbp' => "\xc2\xa3",
-			'eur' => "\xe2\x82\xac",
-			'cad' => 'CA$',
-			'aud' => 'A$',
-			'nzd' => 'NZ$',
-			'chf' => 'CHF ',
-			'jpy' => "\xc2\xa5",
-		];
-
-		$cur    = strtolower( $currency );
-		$symbol = $symbols[ $cur ] ?? strtoupper( $currency ) . ' ';
-
-		if ( 'jpy' === $cur ) {
-			return $symbol . number_format( $amount );
-		}
-
-		return $symbol . number_format( $amount / 100, 2 );
 	}
 }

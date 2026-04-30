@@ -12,6 +12,7 @@ namespace LEAStudios\Payments\REST;
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
+use LEAStudios\Payments\Database\Webhook_Event_Repository;
 use LEAStudios\Payments\Stripe\Stripe_Client;
 use WP_REST_Controller;
 use WP_REST_Request;
@@ -40,10 +41,12 @@ class Webhook_Controller extends WP_REST_Controller {
 	/**
 	 * Constructor.
 	 *
-	 * @param Stripe_Client $stripe_client The Stripe client.
+	 * @param Stripe_Client            $stripe_client The Stripe client.
+	 * @param Webhook_Event_Repository $event_repo    Idempotency tracker for processed event IDs.
 	 */
 	public function __construct(
 		private readonly Stripe_Client $stripe_client,
+		private readonly Webhook_Event_Repository $event_repo,
 	) {}
 
 	/**
@@ -95,18 +98,18 @@ class Webhook_Controller extends WP_REST_Controller {
 
 		try {
 			\Stripe\Webhook::constructEvent( $payload, $signature, $webhook_secret );
-		} catch ( \Stripe\Exception\SignatureVerificationException $e ) {
+		} catch ( \Stripe\Exception\SignatureVerificationException | \UnexpectedValueException $e ) {
+			$is_signature = $e instanceof \Stripe\Exception\SignatureVerificationException;
+
+			$message = $is_signature
+				/* translators: %s: signature verification error detail */
+				? sprintf( __( 'Invalid webhook signature: %s', 'leastudios-payments' ), $e->getMessage() )
+				/* translators: %s: payload parse error detail */
+				: sprintf( __( 'Invalid webhook payload: %s', 'leastudios-payments' ), $e->getMessage() );
+
 			return new \WP_Error(
-				'invalid_signature',
-				/* translators: %s: error detail */
-				sprintf( __( 'Invalid webhook signature: %s', 'leastudios-payments' ), $e->getMessage() ),
-				[ 'status' => 400 ]
-			);
-		} catch ( \UnexpectedValueException $e ) {
-			return new \WP_Error(
-				'invalid_payload',
-				/* translators: %s: error detail */
-				sprintf( __( 'Invalid webhook payload: %s', 'leastudios-payments' ), $e->getMessage() ),
+				$is_signature ? 'invalid_signature' : 'invalid_payload',
+				$message,
 				[ 'status' => 400 ]
 			);
 		}
@@ -123,11 +126,26 @@ class Webhook_Controller extends WP_REST_Controller {
 	public function handle_webhook( WP_REST_Request $request ): WP_REST_Response {
 		$payload = json_decode( $request->get_body(), true );
 
-		if ( ! is_array( $payload ) || empty( $payload['type'] ) ) {
+		if ( ! is_array( $payload ) || empty( $payload['type'] ) || empty( $payload['id'] ) ) {
 			return new WP_REST_Response( [ 'error' => 'Invalid payload' ], 400 );
 		}
 
 		$event_type = sanitize_text_field( $payload['type'] );
+		$event_id   = sanitize_text_field( $payload['id'] );
+
+		// Stripe may redeliver any event. The event_repo claim is atomic on
+		// the UNIQUE index of stripe_event_id; if we've already processed
+		// this id, return 200 OK so Stripe does not keep retrying, but skip
+		// the action hooks entirely.
+		if ( ! $this->event_repo->try_claim( $event_id, $event_type ) ) {
+			return new WP_REST_Response(
+				[
+					'received'  => true,
+					'duplicate' => true,
+				],
+				200
+			);
+		}
 
 		/**
 		 * Fires for every incoming Stripe webhook event.
