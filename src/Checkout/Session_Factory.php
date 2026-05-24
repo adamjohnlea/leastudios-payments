@@ -163,12 +163,15 @@ class Session_Factory {
 		try {
 			// 60-second idempotency window: a double-clicked Buy button or a
 			// proxy retry within the same minute returns the original session.
-			// After 60s a fresh checkout attempt creates a new session.
+			// The args hash is included so that legitimately different requests
+			// (e.g. after a branding/filter change) don't collide on the same
+			// key — Stripe rejects same-key/different-body as a 400.
 			$idempotency_key = sprintf(
-				'lss_u%d_p%d_w%d',
+				'lss_u%d_p%d_w%d_%s',
 				$user_id,
 				$price_id,
-				(int) floor( time() / 60 )
+				(int) floor( time() / 60 ),
+				substr( hash( 'sha256', (string) wp_json_encode( $session_args ) ), 0, 16 )
 			);
 
 			$session = \Stripe\Checkout\Session::create(
