@@ -124,6 +124,14 @@ class Session_Factory {
 			];
 		}
 
+		// Apply branding overrides from plugin settings. Empty fields are
+		// dropped so they fall through to Stripe Dashboard branding defaults.
+		$branding = $this->get_branding_settings();
+
+		if ( ! empty( $branding ) ) {
+			$session_args['branding_settings'] = $branding;
+		}
+
 		// Add transaction descriptions so they show in Stripe Dashboard.
 		if ( 'payment' === $mode ) {
 			$session_args['payment_intent_data'] = [
@@ -196,6 +204,25 @@ class Session_Factory {
 			'client_secret' => $session->client_secret,
 			'error'         => '',
 		];
+	}
+
+	/**
+	 * Read branding_settings from plugin options and return only non-empty
+	 * fields. Empty fields fall through to Stripe Dashboard branding.
+	 *
+	 * @return array<string, string> Branding fields to send to Stripe.
+	 */
+	private function get_branding_settings(): array {
+		$options = get_option( 'leastudios_payments_options', [] );
+
+		if ( ! is_array( $options ) || ! is_array( $options['branding_settings'] ?? null ) ) {
+			return [];
+		}
+
+		return array_filter(
+			$options['branding_settings'],
+			static fn( $value ): bool => is_string( $value ) && '' !== $value
+		);
 	}
 
 	/**

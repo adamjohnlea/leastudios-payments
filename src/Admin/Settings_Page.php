@@ -41,11 +41,49 @@ class Settings_Page {
 	private const CAPABILITY = 'manage_options';
 
 	/**
-	 * The admin page hook suffix.
-	 *
-	 * @var string
+	 * Stripe-supported font_family values for branding_settings.
 	 */
-	private string $hook_suffix = '';
+	private const ALLOWED_FONTS = [
+		'default',
+		'be_vietnam_pro',
+		'bitter',
+		'chakra_petch',
+		'hahmlet',
+		'inconsolata',
+		'inter',
+		'lato',
+		'lora',
+		'm_plus_1_code',
+		'montserrat',
+		'noto_sans',
+		'noto_sans_jp',
+		'noto_serif',
+		'nunito',
+		'open_sans',
+		'pridi',
+		'pt_sans',
+		'pt_serif',
+		'raleway',
+		'roboto',
+		'roboto_slab',
+		'source_sans_pro',
+		'titillium_web',
+		'ubuntu_mono',
+		'zen_maru_gothic',
+	];
+
+	/**
+	 * Stripe-supported border_style values for branding_settings.
+	 */
+	private const ALLOWED_BORDER_STYLES = [ 'rectangular', 'rounded', 'pill' ];
+
+	/**
+	 * Admin page hook suffixes for both the top-level page and the Settings
+	 * submenu — both render the settings UI, so both need our assets.
+	 *
+	 * @var array<int, string>
+	 */
+	private array $hook_suffixes = [];
 
 	/**
 	 * Constructor.
@@ -73,7 +111,7 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function add_menu_pages(): void {
-		add_menu_page(
+		$this->hook_suffixes[] = (string) add_menu_page(
 			__( 'leaStudios Payments', 'leastudios-payments' ),
 			__( 'Payments', 'leastudios-payments' ),
 			self::CAPABILITY,
@@ -83,7 +121,7 @@ class Settings_Page {
 			58
 		);
 
-		$this->hook_suffix = (string) add_submenu_page(
+		$this->hook_suffixes[] = (string) add_submenu_page(
 			'leastudios-payments',
 			__( 'Settings', 'leastudios-payments' ),
 			__( 'Settings', 'leastudios-payments' ),
@@ -180,6 +218,54 @@ class Settings_Page {
 			self::PAGE_SLUG,
 			'leastudios_payments_general'
 		);
+
+		// Checkout appearance section.
+		add_settings_section(
+			'leastudios_payments_appearance',
+			__( 'Checkout appearance', 'leastudios-payments' ),
+			[ $this, 'render_appearance_description' ],
+			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			'appearance_background_color',
+			__( 'Background color', 'leastudios-payments' ),
+			[ $this, 'render_background_color_field' ],
+			self::PAGE_SLUG,
+			'leastudios_payments_appearance'
+		);
+
+		add_settings_field(
+			'appearance_button_color',
+			__( 'Button color', 'leastudios-payments' ),
+			[ $this, 'render_button_color_field' ],
+			self::PAGE_SLUG,
+			'leastudios_payments_appearance'
+		);
+
+		add_settings_field(
+			'appearance_font_family',
+			__( 'Font', 'leastudios-payments' ),
+			[ $this, 'render_font_family_field' ],
+			self::PAGE_SLUG,
+			'leastudios_payments_appearance'
+		);
+
+		add_settings_field(
+			'appearance_border_style',
+			__( 'Border style', 'leastudios-payments' ),
+			[ $this, 'render_border_style_field' ],
+			self::PAGE_SLUG,
+			'leastudios_payments_appearance'
+		);
+
+		add_settings_field(
+			'appearance_display_name',
+			__( 'Display name', 'leastudios-payments' ),
+			[ $this, 'render_display_name_field' ],
+			self::PAGE_SLUG,
+			'leastudios_payments_appearance'
+		);
 	}
 
 	/**
@@ -221,7 +307,43 @@ class Settings_Page {
 		$sanitized['success_page'] = isset( $input['success_page'] ) ? absint( $input['success_page'] ) : 0;
 		$sanitized['cancel_page']  = isset( $input['cancel_page'] ) ? absint( $input['cancel_page'] ) : 0;
 
+		// Branding settings. Empty values fall through to Stripe Dashboard branding.
+		$branding_input                 = is_array( $input['branding_settings'] ?? null ) ? $input['branding_settings'] : [];
+		$sanitized['branding_settings'] = [
+			'background_color' => $this->sanitize_hex_color( $branding_input['background_color'] ?? '' ),
+			'button_color'     => $this->sanitize_hex_color( $branding_input['button_color'] ?? '' ),
+			'font_family'      => in_array( $branding_input['font_family'] ?? '', self::ALLOWED_FONTS, true )
+				? (string) $branding_input['font_family']
+				: '',
+			'border_style'     => in_array( $branding_input['border_style'] ?? '', self::ALLOWED_BORDER_STYLES, true )
+				? (string) $branding_input['border_style']
+				: '',
+			'display_name'     => isset( $branding_input['display_name'] )
+				? sanitize_text_field( $branding_input['display_name'] )
+				: '',
+		];
+
 		return $sanitized;
+	}
+
+	/**
+	 * Sanitize a hex color string. Accepts #RGB or #RRGGBB; returns '' if invalid.
+	 *
+	 * @param mixed $value Raw input.
+	 * @return string Normalized hex color or empty string.
+	 */
+	private function sanitize_hex_color( mixed $value ): string {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		$value = trim( $value );
+
+		if ( '' === $value ) {
+			return '';
+		}
+
+		return preg_match( '/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/', $value ) ? $value : '';
 	}
 
 	/**
@@ -485,13 +607,156 @@ class Settings_Page {
 	}
 
 	/**
+	 * Render the appearance section description.
+	 *
+	 * @return void
+	 */
+	public function render_appearance_description(): void {
+		?>
+		<p class="description">
+			<?php
+			printf(
+				/* translators: %s: Stripe Dashboard branding URL */
+				esc_html__( 'Customize the embedded Stripe Checkout. Leave a field blank to fall back to your %s.', 'leastudios-payments' ),
+				'<a href="https://dashboard.stripe.com/settings/branding/checkout" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Stripe Dashboard branding', 'leastudios-payments' ) . '</a>'
+			);
+			?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the background color field.
+	 *
+	 * @return void
+	 */
+	public function render_background_color_field(): void {
+		$value = $this->get_branding_value( 'background_color' );
+		?>
+		<input
+			type="text"
+			id="appearance_background_color"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[branding_settings][background_color]"
+			value="<?php echo esc_attr( $value ); ?>"
+			class="leastudios-payments-color-picker"
+			data-default-color=""
+			placeholder="#ffffff"
+		/>
+		<p class="description">
+			<?php esc_html_e( 'Hex color for the area around the payment form (e.g. #ffffff).', 'leastudios-payments' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the button color field.
+	 *
+	 * @return void
+	 */
+	public function render_button_color_field(): void {
+		$value = $this->get_branding_value( 'button_color' );
+		?>
+		<input
+			type="text"
+			id="appearance_button_color"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[branding_settings][button_color]"
+			value="<?php echo esc_attr( $value ); ?>"
+			class="leastudios-payments-color-picker"
+			data-default-color=""
+			placeholder="#0570de"
+		/>
+		<p class="description">
+			<?php esc_html_e( 'Hex color for the primary Pay/Subscribe button.', 'leastudios-payments' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the font family field.
+	 *
+	 * @return void
+	 */
+	public function render_font_family_field(): void {
+		$value = $this->get_branding_value( 'font_family' );
+		?>
+		<select
+			id="appearance_font_family"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[branding_settings][font_family]"
+		>
+			<option value=""><?php esc_html_e( '-- Use Dashboard default --', 'leastudios-payments' ); ?></option>
+			<?php foreach ( self::ALLOWED_FONTS as $font ) : ?>
+				<option value="<?php echo esc_attr( $font ); ?>" <?php selected( $value, $font ); ?>>
+					<?php echo esc_html( $font ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Render the border style field.
+	 *
+	 * @return void
+	 */
+	public function render_border_style_field(): void {
+		$value = $this->get_branding_value( 'border_style' );
+		?>
+		<select
+			id="appearance_border_style"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[branding_settings][border_style]"
+		>
+			<option value=""><?php esc_html_e( '-- Use Dashboard default --', 'leastudios-payments' ); ?></option>
+			<?php foreach ( self::ALLOWED_BORDER_STYLES as $style ) : ?>
+				<option value="<?php echo esc_attr( $style ); ?>" <?php selected( $value, $style ); ?>>
+					<?php echo esc_html( $style ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Render the display name field.
+	 *
+	 * @return void
+	 */
+	public function render_display_name_field(): void {
+		$value = $this->get_branding_value( 'display_name' );
+		?>
+		<input
+			type="text"
+			id="appearance_display_name"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[branding_settings][display_name]"
+			value="<?php echo esc_attr( $value ); ?>"
+			class="regular-text"
+		/>
+		<p class="description">
+			<?php esc_html_e( 'Optional override for the business name shown at the top of the checkout.', 'leastudios-payments' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Read a single branding sub-key from saved options.
+	 *
+	 * @param string $key Branding key.
+	 * @return string Saved value or empty string.
+	 */
+	private function get_branding_value( string $key ): string {
+		$options  = get_option( self::OPTION_NAME, self::get_defaults() );
+		$branding = is_array( $options['branding_settings'] ?? null ) ? $options['branding_settings'] : [];
+
+		return isset( $branding[ $key ] ) && is_string( $branding[ $key ] ) ? $branding[ $key ] : '';
+	}
+
+	/**
 	 * Enqueue admin assets on our settings page only.
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 * @return void
 	 */
 	public function enqueue_assets( string $hook_suffix ): void {
-		if ( $hook_suffix !== $this->hook_suffix ) {
+		if ( ! in_array( $hook_suffix, $this->hook_suffixes, true ) ) {
 			return;
 		}
 
@@ -500,6 +765,14 @@ class Settings_Page {
 			LEASTUDIOS_PAYMENTS_URL . 'assets/css/admin.css',
 			[],
 			LEASTUDIOS_PAYMENTS_VERSION
+		);
+
+		// WordPress core color picker for the appearance hex fields.
+		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_script( 'wp-color-picker' );
+		wp_add_inline_script(
+			'wp-color-picker',
+			"jQuery(function($){ $('.leastudios-payments-color-picker').wpColorPicker(); });"
 		);
 	}
 
@@ -510,13 +783,20 @@ class Settings_Page {
 	 */
 	public static function get_defaults(): array {
 		return [
-			'test_mode'        => true,
-			'publishable_key'  => '',
-			'secret_key'       => '',
-			'webhook_secret'   => '',
-			'default_currency' => 'USD',
-			'success_page'     => 0,
-			'cancel_page'      => 0,
+			'test_mode'         => true,
+			'publishable_key'   => '',
+			'secret_key'        => '',
+			'webhook_secret'    => '',
+			'default_currency'  => 'USD',
+			'success_page'      => 0,
+			'cancel_page'       => 0,
+			'branding_settings' => [
+				'background_color' => '',
+				'button_color'     => '',
+				'font_family'      => '',
+				'border_style'     => '',
+				'display_name'     => '',
+			],
 		];
 	}
 }
