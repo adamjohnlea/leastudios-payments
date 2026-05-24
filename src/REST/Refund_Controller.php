@@ -73,6 +73,9 @@ class Refund_Controller extends WP_REST_Controller {
 							'required'          => true,
 							'type'              => 'integer',
 							'sanitize_callback' => 'absint',
+							'validate_callback' => static function ( $value ): bool {
+								return is_numeric( $value ) && (int) $value >= 1;
+							},
 						],
 					],
 				],

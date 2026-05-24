@@ -127,6 +127,25 @@ class Checkout_Controller extends WP_REST_Controller {
 	}
 
 	/**
+	 * Validate that a URL points to the same host as this site. Blocks
+	 * open-redirect attempts where a tampered call passes an off-site URL
+	 * that Stripe would then redirect the customer to after checkout.
+	 *
+	 * @param mixed $value The submitted value.
+	 * @return bool True if the URL host matches the site host.
+	 */
+	public function validate_same_host_url( $value ): bool {
+		if ( ! is_string( $value ) || '' === $value ) {
+			return false;
+		}
+
+		$url_host  = wp_parse_url( $value, PHP_URL_HOST );
+		$site_host = wp_parse_url( home_url(), PHP_URL_HOST );
+
+		return is_string( $url_host ) && is_string( $site_host ) && strtolower( $url_host ) === strtolower( $site_host );
+	}
+
+	/**
 	 * Get endpoint argument definitions.
 	 *
 	 * @return array<string, array<string, mixed>> The args schema.
@@ -145,6 +164,7 @@ class Checkout_Controller extends WP_REST_Controller {
 				'required'          => true,
 				'type'              => 'string',
 				'sanitize_callback' => 'esc_url_raw',
+				'validate_callback' => [ $this, 'validate_same_host_url' ],
 			],
 		];
 	}

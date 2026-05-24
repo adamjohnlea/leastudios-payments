@@ -66,11 +66,36 @@ class Portal_Controller extends WP_REST_Controller {
 							'required'          => false,
 							'type'              => 'string',
 							'sanitize_callback' => 'esc_url_raw',
+							'validate_callback' => [ $this, 'validate_optional_same_host_url' ],
 						],
 					],
 				],
 			]
 		);
+	}
+
+	/**
+	 * Validate that an optional return_url points to the same host as this
+	 * site. Empty/missing is allowed (the handler falls back to home_url);
+	 * an off-site URL is rejected to prevent open-redirect abuse after
+	 * Stripe sends the customer back from the Billing Portal.
+	 *
+	 * @param mixed $value The submitted value.
+	 * @return bool True if absent/empty or same-host.
+	 */
+	public function validate_optional_same_host_url( $value ): bool {
+		if ( null === $value || '' === $value ) {
+			return true;
+		}
+
+		if ( ! is_string( $value ) ) {
+			return false;
+		}
+
+		$url_host  = wp_parse_url( $value, PHP_URL_HOST );
+		$site_host = wp_parse_url( home_url(), PHP_URL_HOST );
+
+		return is_string( $url_host ) && is_string( $site_host ) && strtolower( $url_host ) === strtolower( $site_host );
 	}
 
 	/**
