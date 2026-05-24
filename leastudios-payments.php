@@ -20,7 +20,7 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'LEASTUDIOS_PAYMENTS_VERSION', '1.0.0' );
+define( 'LEASTUDIOS_PAYMENTS_VERSION', '1.0.1' );
 define( 'LEASTUDIOS_PAYMENTS_FILE', __FILE__ );
 define( 'LEASTUDIOS_PAYMENTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LEASTUDIOS_PAYMENTS_URL', plugin_dir_url( __FILE__ ) );
