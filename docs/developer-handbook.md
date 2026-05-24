@@ -1175,7 +1175,7 @@ add_action(
 
 ---
 
-### Admin
+### Lifecycle & Admin
 
 #### `leastudios_payments_tag_groups`
 
@@ -1221,8 +1221,6 @@ add_filter(
 ```
 
 ---
-
-### Lifecycle
 
 #### `leastudios_payments_initialized`
 
