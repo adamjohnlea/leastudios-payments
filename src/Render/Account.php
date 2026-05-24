@@ -235,13 +235,11 @@ class Account {
 	private function get_user_orders( int $user_id ): array {
 		global $wpdb;
 
-		$table = \LEAStudios\Payments\Database\Migration::table( 'orders' );
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE wp_user_id = %d ORDER BY created_at DESC LIMIT 50",
+				'SELECT * FROM %i WHERE wp_user_id = %d ORDER BY created_at DESC LIMIT 50',
+				\LEAStudios\Payments\Database\Migration::table( 'orders' ),
 				$user_id
 			)
 		);
@@ -256,13 +254,11 @@ class Account {
 	private function get_user_subscriptions( int $user_id ): array {
 		global $wpdb;
 
-		$table = \LEAStudios\Payments\Database\Migration::table( 'subscriptions' );
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE wp_user_id = %d AND status != 'canceled' ORDER BY created_at DESC",
+				"SELECT * FROM %i WHERE wp_user_id = %d AND status != 'canceled' ORDER BY created_at DESC",
+				\LEAStudios\Payments\Database\Migration::table( 'subscriptions' ),
 				$user_id
 			)
 		);
@@ -277,20 +273,19 @@ class Account {
 	private function get_price_label( string $stripe_price_id ): string {
 		global $wpdb;
 
-		$prices_table   = \LEAStudios\Payments\Database\Migration::table( 'prices' );
-		$products_table = \LEAStudios\Payments\Database\Migration::table( 'products' );
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT p.name, pr.amount, pr.currency, pr.recurring_interval
-				FROM {$prices_table} pr
-				INNER JOIN {$products_table} p ON pr.product_id = p.id
-				WHERE pr.stripe_price_id = %s",
+				'SELECT p.name, pr.amount, pr.currency, pr.recurring_interval
+				FROM %i pr
+				INNER JOIN %i p ON pr.product_id = p.id
+				WHERE pr.stripe_price_id = %s',
+				\LEAStudios\Payments\Database\Migration::table( 'prices' ),
+				\LEAStudios\Payments\Database\Migration::table( 'products' ),
 				$stripe_price_id
 			)
 		);
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		if ( ! $row ) {
 			return $stripe_price_id;

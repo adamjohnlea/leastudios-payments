@@ -84,14 +84,12 @@ class Price_Repository {
 	public function get_by_product( int $product_id, string $status = 'active' ): array {
 		global $wpdb;
 
-		$table = $this->table();
-
 		if ( '' !== $status ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			return $wpdb->get_results(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT * FROM {$table} WHERE product_id = %d AND status = %s ORDER BY amount ASC",
+					'SELECT * FROM %i WHERE product_id = %d AND status = %s ORDER BY amount ASC',
+					$this->table(),
 					$product_id,
 					$status
 				)
@@ -101,8 +99,8 @@ class Price_Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE product_id = %d ORDER BY amount ASC",
+				'SELECT * FROM %i WHERE product_id = %d ORDER BY amount ASC',
+				$this->table(),
 				$product_id
 			)
 		);
@@ -117,13 +115,11 @@ class Price_Repository {
 	public function get( int $id ): ?object {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE id = %d",
+				'SELECT * FROM %i WHERE id = %d',
+				$this->table(),
 				$id
 			)
 		);
@@ -140,13 +136,11 @@ class Price_Repository {
 	public function get_by_stripe_id( string $stripe_price_id ): ?object {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE stripe_price_id = %s",
+				'SELECT * FROM %i WHERE stripe_price_id = %s',
+				$this->table(),
 				$stripe_price_id
 			)
 		);

@@ -71,13 +71,11 @@ class Product_Repository {
 	public function get( int $id ): ?object {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE id = %d",
+				'SELECT * FROM %i WHERE id = %d',
+				$this->table(),
 				$id
 			)
 		);
@@ -94,13 +92,11 @@ class Product_Repository {
 	public function get_by_stripe_id( string $stripe_product_id ): ?object {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE stripe_product_id = %s",
+				'SELECT * FROM %i WHERE stripe_product_id = %s',
+				$this->table(),
 				$stripe_product_id
 			)
 		);
@@ -119,14 +115,12 @@ class Product_Repository {
 	public function get_all( string $status = '', int $limit = 50, int $offset = 0 ): array {
 		global $wpdb;
 
-		$table = $this->table();
-
 		if ( '' !== $status ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			return $wpdb->get_results(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT * FROM {$table} WHERE status = %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
+					'SELECT * FROM %i WHERE status = %s ORDER BY created_at DESC LIMIT %d OFFSET %d',
+					$this->table(),
 					$status,
 					$limit,
 					$offset
@@ -137,8 +131,8 @@ class Product_Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+				'SELECT * FROM %i ORDER BY created_at DESC LIMIT %d OFFSET %d',
+				$this->table(),
 				$limit,
 				$offset
 			)
@@ -154,14 +148,12 @@ class Product_Repository {
 	public function count( string $status = '' ): int {
 		global $wpdb;
 
-		$table = $this->table();
-
 		if ( '' !== $status ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			return (int) $wpdb->get_var(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT COUNT(*) FROM {$table} WHERE status = %s",
+					'SELECT COUNT(*) FROM %i WHERE status = %s',
+					$this->table(),
 					$status
 				)
 			);
@@ -169,8 +161,7 @@ class Product_Repository {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return (int) $wpdb->get_var(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			"SELECT COUNT(*) FROM {$table}"
+			$wpdb->prepare( 'SELECT COUNT(*) FROM %i', $this->table() )
 		);
 	}
 

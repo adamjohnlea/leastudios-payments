@@ -78,13 +78,11 @@ class Order_Repository {
 	public function get( int $id ): ?object {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE id = %d",
+				'SELECT * FROM %i WHERE id = %d',
+				$this->table(),
 				$id
 			)
 		);
@@ -101,13 +99,11 @@ class Order_Repository {
 	public function get_by_session_id( string $stripe_session_id ): ?object {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE stripe_session_id = %s",
+				'SELECT * FROM %i WHERE stripe_session_id = %s',
+				$this->table(),
 				$stripe_session_id
 			)
 		);
@@ -126,14 +122,12 @@ class Order_Repository {
 	public function get_all( string $status = '', int $limit = 20, int $offset = 0 ): array {
 		global $wpdb;
 
-		$table = $this->table();
-
 		if ( '' !== $status ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			return $wpdb->get_results(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT * FROM {$table} WHERE payment_status = %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
+					'SELECT * FROM %i WHERE payment_status = %s ORDER BY created_at DESC LIMIT %d OFFSET %d',
+					$this->table(),
 					$status,
 					$limit,
 					$offset
@@ -144,8 +138,8 @@ class Order_Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+				'SELECT * FROM %i ORDER BY created_at DESC LIMIT %d OFFSET %d',
+				$this->table(),
 				$limit,
 				$offset
 			)
@@ -161,14 +155,12 @@ class Order_Repository {
 	public function count( string $status = '' ): int {
 		global $wpdb;
 
-		$table = $this->table();
-
 		if ( '' !== $status ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			return (int) $wpdb->get_var(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT COUNT(*) FROM {$table} WHERE payment_status = %s",
+					'SELECT COUNT(*) FROM %i WHERE payment_status = %s',
+					$this->table(),
 					$status
 				)
 			);
@@ -176,8 +168,7 @@ class Order_Repository {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return (int) $wpdb->get_var(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			"SELECT COUNT(*) FROM {$table}"
+			$wpdb->prepare( 'SELECT COUNT(*) FROM %i', $this->table() )
 		);
 	}
 
@@ -254,13 +245,11 @@ class Order_Repository {
 	public function get_revenue( int $days = 30 ): int {
 		global $wpdb;
 
-		$table = $this->table();
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT COALESCE( SUM( amount_total - refunded_amount ), 0 ) FROM {$table} WHERE payment_status IN ('paid', 'partial_refund') AND created_at >= DATE_SUB( NOW(), INTERVAL %d DAY )",
+				"SELECT COALESCE( SUM( amount_total - refunded_amount ), 0 ) FROM %i WHERE payment_status IN ('paid', 'partial_refund') AND created_at >= DATE_SUB( NOW(), INTERVAL %d DAY )",
+				$this->table(),
 				$days
 			)
 		);

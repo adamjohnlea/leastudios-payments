@@ -240,17 +240,19 @@ class Migration {
 	private function enforce_unsigned_money_columns(): void {
 		global $wpdb;
 
-		$prices_table = self::table( 'prices' );
-		$orders_table = self::table( 'orders' );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare( 'ALTER TABLE %i MODIFY COLUMN amount bigint unsigned NOT NULL', self::table( 'prices' ) )
+		);
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "ALTER TABLE {$prices_table} MODIFY COLUMN amount bigint unsigned NOT NULL" );
+		$wpdb->query(
+			$wpdb->prepare( 'ALTER TABLE %i MODIFY COLUMN amount_total bigint unsigned NOT NULL DEFAULT 0', self::table( 'orders' ) )
+		);
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "ALTER TABLE {$orders_table} MODIFY COLUMN amount_total bigint unsigned NOT NULL DEFAULT 0" );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "ALTER TABLE {$orders_table} MODIFY COLUMN refunded_amount bigint unsigned NOT NULL DEFAULT 0" );
+		$wpdb->query(
+			$wpdb->prepare( 'ALTER TABLE %i MODIFY COLUMN refunded_amount bigint unsigned NOT NULL DEFAULT 0', self::table( 'orders' ) )
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 
 	/**
@@ -263,12 +265,17 @@ class Migration {
 
 		$table = self::table( 'orders' );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$column_exists = $wpdb->get_results( "SHOW COLUMNS FROM {$table} LIKE 'order_type'" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$column_exists = $wpdb->get_results(
+			$wpdb->prepare( 'SHOW COLUMNS FROM %i LIKE %s', $table, 'order_type' )
+		);
 
 		if ( empty( $column_exists ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN order_type varchar(20) NOT NULL DEFAULT 'one_time' AFTER payment_status" );
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query(
+				$wpdb->prepare( "ALTER TABLE %i ADD COLUMN order_type varchar(20) NOT NULL DEFAULT 'one_time' AFTER payment_status", $table )
+			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		}
 	}
 
@@ -282,12 +289,17 @@ class Migration {
 
 		$table = self::table( 'products' );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$column_exists = $wpdb->get_results( "SHOW COLUMNS FROM {$table} LIKE 'require_shipping'" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$column_exists = $wpdb->get_results(
+			$wpdb->prepare( 'SHOW COLUMNS FROM %i LIKE %s', $table, 'require_shipping' )
+		);
 
 		if ( empty( $column_exists ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN require_shipping tinyint(1) NOT NULL DEFAULT 0 AFTER status" );
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query(
+				$wpdb->prepare( 'ALTER TABLE %i ADD COLUMN require_shipping tinyint(1) NOT NULL DEFAULT 0 AFTER status', $table )
+			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		}
 	}
 
@@ -303,8 +315,8 @@ class Migration {
 
 		foreach ( $tables as $table ) {
 			$table_name = self::table( $table );
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table_name ) );
 		}
 
 		delete_option( self::SCHEMA_VERSION_KEY );

@@ -57,13 +57,12 @@ class Refund_Handler {
 
 		// Find the order by payment intent.
 		global $wpdb;
-		$table = \LEAStudios\Payments\Database\Migration::table( 'orders' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$order = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$table} WHERE stripe_payment_intent_id = %s",
+				'SELECT * FROM %i WHERE stripe_payment_intent_id = %s',
+				\LEAStudios\Payments\Database\Migration::table( 'orders' ),
 				$payment_intent_id
 			)
 		);
