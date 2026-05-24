@@ -3,7 +3,7 @@
  * Plugin Name:       leaStudios Payments
  * Plugin URI:        https://leastudios.com/plugins/leastudios-payments
  * Description:       Stripe payments for WordPress. Accept one-time payments and subscriptions using Stripe Embedded Checkout.
- * Version:           1.0.2
+ * Version:           1.0.3
  * Requires at least: 6.4
  * Requires PHP:      8.2
  * Author:            leaStudios
@@ -20,7 +20,12 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'LEASTUDIOS_PAYMENTS_VERSION', '1.0.2' );
+// Derive the version from the plugin header so the runtime constant can
+// never drift from the version shipped in the release zip.
+define(
+	'LEASTUDIOS_PAYMENTS_VERSION',
+	get_file_data( __FILE__, [ 'Version' => 'Version' ] )['Version']
+);
 define( 'LEASTUDIOS_PAYMENTS_FILE', __FILE__ );
 define( 'LEASTUDIOS_PAYMENTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LEASTUDIOS_PAYMENTS_URL', plugin_dir_url( __FILE__ ) );
