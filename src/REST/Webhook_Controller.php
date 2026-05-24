@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Database\Webhook_Event_Repository;
 use LEAStudios\Payments\Stripe\Stripe_Client;
+use LEAStudios\Payments\Webhook\Webhook_Events;
 use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -132,6 +133,19 @@ class Webhook_Controller extends WP_REST_Controller {
 
 		$event_type = sanitize_text_field( $payload['type'] );
 		$event_id   = sanitize_text_field( $payload['id'] );
+
+		// Acknowledge — but do not dispatch — events the plugin does not
+		// register a handler for. Webhook_Events is the single source of
+		// truth; a 200 OK keeps Stripe from retrying noise.
+		if ( ! Webhook_Events::is_handled( $event_type ) ) {
+			return new WP_REST_Response(
+				[
+					'received' => true,
+					'ignored'  => true,
+				],
+				200
+			);
+		}
 
 		// Stripe may redeliver any event. The event_repo claim is atomic on
 		// the UNIQUE index of stripe_event_id; if we've already processed

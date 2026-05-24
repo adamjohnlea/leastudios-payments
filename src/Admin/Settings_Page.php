@@ -13,6 +13,7 @@ namespace LEAStudios\Payments\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use LEAStudios\Payments\Encryption\Options_Encryptor;
+use LEAStudios\Payments\Webhook\Webhook_Events;
 
 /**
  * Registers and renders the leaStudios Payments settings page.
@@ -374,6 +375,25 @@ class Settings_Page {
 			);
 			?>
 		</p>
+		<p class="description">
+			<?php esc_html_e( 'Enable these events on the Stripe webhook endpoint:', 'leastudios-payments' ); ?>
+		</p>
+		<table class="widefat striped" style="max-width:640px;margin-top:4px;">
+			<thead>
+				<tr>
+					<th scope="col"><?php esc_html_e( 'Stripe event', 'leastudios-payments' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Purpose', 'leastudios-payments' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php foreach ( Webhook_Events::HANDLED as $event_type => $description ) : ?>
+				<tr>
+					<td><code><?php echo esc_html( $event_type ); ?></code></td>
+					<td><?php echo esc_html( $description ); ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 

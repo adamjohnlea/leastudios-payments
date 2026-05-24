@@ -26,7 +26,19 @@ Stripe payments for WordPress. Accept one-time payments and subscriptions using 
 3. Go to **Payments → Settings** and enter your Stripe API keys.
 4. Create a product under **Payments → Products**.
 5. Add a checkout button via shortcode or the block editor.
-6. Configure the Stripe webhook to point at the URL shown on the Settings page.
+6. Configure the Stripe webhook to point at the URL shown on the Settings page (see [Webhook events](#webhook-events) for which events to enable).
+
+## Webhook events
+
+The plugin exposes a single endpoint that Stripe should POST to:
+
+```
+POST {site_url}/wp-json/leastudios-payments/v1/webhook
+```
+
+The exact URL for your install, along with the full list of Stripe event types the plugin handles and what each one drives, is shown on **Payments → Settings** next to the signing-secret field. Configure the Stripe webhook endpoint to send those events.
+
+Webhook event IDs are tracked in a dedicated table so duplicate deliveries from Stripe are processed only once.
 
 ## Related plugins
 
