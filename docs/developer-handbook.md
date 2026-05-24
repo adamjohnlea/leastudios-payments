@@ -1574,7 +1574,7 @@ add_filter(
         $affiliate_code = get_user_meta( $user_id, 'my_affiliate_code', true );
         $extra_meta     = [
             'affiliate_code' => is_string( $affiliate_code ) ? $affiliate_code : '',
-            'campaign'       => sanitize_text_field( $_COOKIE['utm_campaign'] ?? '' ),
+            'campaign'       => isset( $_COOKIE['utm_campaign'] ) ? sanitize_text_field( wp_unslash( $_COOKIE['utm_campaign'] ) ) : '',
         ];
 
         if ( 'payment' === ( $session_args['mode'] ?? '' ) ) {
@@ -1690,24 +1690,31 @@ add_filter(
     }
 );
 
-// Block checkout session creation entirely for users whose profile country is restricted.
-add_filter(
-    'leastudios_payments_checkout_session_args',
-    function ( array $session_args, int $price_id, int $user_id ): array {
-        $blocked = [ 'RU', 'BY' ];
-        $country = strtoupper( (string) get_user_meta( $user_id, 'billing_country', true ) );
-        if ( in_array( $country, $blocked, true ) ) {
-            // Return args with an invalid mode to force a Stripe API error,
-            // which Session_Factory converts to a friendly user-facing error.
-            // A cleaner approach is to add the country check before calling
-            // Session_Factory::create() in your own middleware plugin.
-            $session_args['_blocked'] = true;
-        }
-        return $session_args;
-    },
-    10,
-    3
-);
+```
+
+To block checkout session **creation** based on a country check (rather than
+just hiding the country from the shipping dropdown), do not try to do it from
+inside the `leastudios_payments_checkout_session_args` filter — that filter
+expects an `array` back, and Stripe silently ignores any unrecognised keys you
+might add (so a sentinel like `$session_args['_blocked'] = true` has no effect).
+The supported pattern is to intercept earlier, before `Session_Factory::create()`
+runs, from your own plugin's REST `permission_callback` or pre-checkout flow:
+
+```php
+add_filter( 'rest_pre_dispatch', function ( $result, $server, $request ) {
+    if ( '/leastudios-payments/v1/checkout-session' !== $request->get_route() ) {
+        return $result;
+    }
+    $country = strtoupper( (string) get_user_meta( get_current_user_id(), 'billing_country', true ) );
+    if ( in_array( $country, [ 'RU', 'BY' ], true ) ) {
+        return new WP_Error(
+            'leastudios_payments_country_blocked',
+            __( 'Checkout is not available in your region.', 'my-plugin' ),
+            [ 'status' => 403 ]
+        );
+    }
+    return $result;
+}, 10, 3 );
 ```
 
 ---
