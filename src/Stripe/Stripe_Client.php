@@ -20,15 +20,13 @@ use LEAStudios\Payments\Encryption\Options_Encryptor;
 class Stripe_Client {
 
 	/**
-	 * Stripe API version this plugin is pinned to. Pinning is important
-	 * because Stripe rolls schema changes silently on the account-default
-	 * version: notably, in 2025-04-30 the subscription `current_period_*`
-	 * fields moved from the subscription object to the subscription-item
-	 * level. The handlers in this plugin read those fields at the top
-	 * level, so we explicitly request the pre-move version. When updating
-	 * this constant, also audit the webhook handlers in src/Checkout/.
+	 * Stripe API version this plugin is pinned to. Pinning is required so
+	 * Stripe doesn't silently roll schema changes onto the account-default
+	 * version under us. When bumping this constant, audit the webhook
+	 * handlers in src/Checkout/ for any field-shape changes documented in
+	 * the Stripe API changelog between the previous and new version.
 	 */
-	private const STRIPE_API_VERSION = '2024-06-20';
+	private const STRIPE_API_VERSION = '2026-03-25.dahlia';
 
 	/**
 	 * Whether the API key has been set on the SDK.

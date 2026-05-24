@@ -93,13 +93,16 @@ class Subscription_Handler {
 		$claimed_user_id = isset( $metadata['wp_user_id'] ) ? (int) $metadata['wp_user_id'] : null;
 		$wp_user_id      = $this->customer_manager->resolve_user_id( $customer_id, $claimed_user_id );
 
-		// Convert timestamps.
-		$period_start = isset( $subscription['current_period_start'] )
-			? gmdate( 'Y-m-d H:i:s', (int) $subscription['current_period_start'] )
+		// Convert timestamps. As of Stripe API 2025-04-30, current_period_*
+		// moved from the Subscription object to the SubscriptionItem level.
+		// This plugin only creates single-item subscriptions, so we read
+		// from items[0]; multi-item subscriptions would need per-item handling.
+		$period_start = isset( $items[0]['current_period_start'] )
+			? gmdate( 'Y-m-d H:i:s', (int) $items[0]['current_period_start'] )
 			: null;
 
-		$period_end = isset( $subscription['current_period_end'] )
-			? gmdate( 'Y-m-d H:i:s', (int) $subscription['current_period_end'] )
+		$period_end = isset( $items[0]['current_period_end'] )
+			? gmdate( 'Y-m-d H:i:s', (int) $items[0]['current_period_end'] )
 			: null;
 
 		// Map Stripe status to our local status. An unknown status falls
@@ -157,7 +160,9 @@ class Subscription_Handler {
 	public function handle_invoice_paid( array $payload ): void {
 		$invoice = $payload['data']['object'] ?? [];
 
-		$subscription_id = $invoice['subscription'] ?? '';
+		// As of Stripe API 2025-09-30 (clover), invoice.subscription moved to
+		// invoice.parent.subscription_details.subscription.
+		$subscription_id = $invoice['parent']['subscription_details']['subscription'] ?? '';
 
 		if ( '' === $subscription_id ) {
 			return;
@@ -195,7 +200,9 @@ class Subscription_Handler {
 	public function handle_invoice_payment_failed( array $payload ): void {
 		$invoice = $payload['data']['object'] ?? [];
 
-		$subscription_id = $invoice['subscription'] ?? '';
+		// As of Stripe API 2025-09-30 (clover), invoice.subscription moved to
+		// invoice.parent.subscription_details.subscription.
+		$subscription_id = $invoice['parent']['subscription_details']['subscription'] ?? '';
 
 		if ( '' === $subscription_id ) {
 			return;
