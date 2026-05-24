@@ -20,20 +20,32 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
-	require_once __DIR__ . '/vendor/autoload.php';
+/**
+ * Execute the uninstall routine.
+ *
+ * Wrapped in a function so the file introduces no unprefixed
+ * variables at global scope (Plugin Check PrefixAllGlobals).
+ *
+ * @return void
+ */
+function leastudios_payments_run_uninstall(): void {
+	if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
+		require_once __DIR__ . '/vendor/autoload.php';
+	}
+
+	$options       = get_option( 'leastudios_payments_options', [] );
+	$opt_in_wipe   = is_array( $options ) && ! empty( $options['delete_data_on_uninstall'] );
+	$constant_wipe = defined( 'LEASTUDIOS_PAYMENTS_DELETE_DATA_ON_UNINSTALL' ) && constant( 'LEASTUDIOS_PAYMENTS_DELETE_DATA_ON_UNINSTALL' );
+
+	if ( $opt_in_wipe || $constant_wipe ) {
+		// Full wipe: drop all custom tables, clear user-meta mappings, delete options.
+		LEAStudios\Payments\Database\Migration::drop_tables();
+		delete_metadata( 'user', 0, 'leastudios_payments_stripe_customer_id', '', true );
+		delete_option( 'leastudios_payments_options' );
+		delete_option( 'leastudios_payments_schema_version' );
+	}
+
+	flush_rewrite_rules();
 }
 
-$options       = get_option( 'leastudios_payments_options', [] );
-$opt_in_wipe   = is_array( $options ) && ! empty( $options['delete_data_on_uninstall'] );
-$constant_wipe = defined( 'LEASTUDIOS_PAYMENTS_DELETE_DATA_ON_UNINSTALL' ) && constant( 'LEASTUDIOS_PAYMENTS_DELETE_DATA_ON_UNINSTALL' );
-
-if ( $opt_in_wipe || $constant_wipe ) {
-	// Full wipe: drop all custom tables, clear user-meta mappings, delete options.
-	LEAStudios\Payments\Database\Migration::drop_tables();
-	delete_metadata( 'user', 0, 'leastudios_payments_stripe_customer_id', '', true );
-	delete_option( 'leastudios_payments_options' );
-	delete_option( 'leastudios_payments_schema_version' );
-}
-
-flush_rewrite_rules();
+leastudios_payments_run_uninstall();
