@@ -4,7 +4,7 @@ Tags: stripe, payments, checkout, subscriptions, ecommerce
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -58,6 +58,18 @@ Yes. You need a Stripe account with API keys. Both test mode and live mode are s
 Yes. Stripe Embedded Checkout renders the payment form directly on your page. The customer never leaves your site.
 
 == Changelog ==
+
+= 1.1.1 — 2026-05-24 =
+
+* Changed: hardened SQL construction across the plugin for Plugin Check compliance — table-name interpolations converted to the `%i` placeholder (WordPress 6.2+); `uninstall.php` wrapped in a function to keep globals out of the file scope.
+* Internal: new `composer lint:db` tripwire (shared across the suite) blocks variable interpolation in `$wpdb` query construction; Plugin Check is now run against the release zip in CI to catch regressions before tag.
+* Docs: added developer handbook under `docs/developer-handbook.md`.
+
+= 1.1.0 =
+
+* Added: Checkout appearance settings panel — customise Stripe Embedded Checkout colours, border radius, and fonts from the Settings page.
+* Fixed: Stripe Checkout Sessions now use the `embedded_page` UI mode so the embedded form renders correctly.
+* Fixed: avoid Stripe idempotency conflicts when session arguments change between attempts.
 
 = 1.0.0 =
 * Initial release.
