@@ -95,7 +95,7 @@ class Session_Factory {
 
 		// Build the session arguments.
 		$session_args = [
-			'ui_mode'         => 'embedded',
+			'ui_mode'         => 'embedded_page',
 			'mode'            => $mode,
 			'customer'        => $customer_id,
 			'customer_update' => [
