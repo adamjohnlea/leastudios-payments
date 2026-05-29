@@ -43,6 +43,7 @@ use LEAStudios\Payments\Shared\Container;
 use LEAStudios\Payments\Stripe\Customer_Manager;
 use LEAStudios\Payments\Stripe\Product_Sync;
 use LEAStudios\Payments\Stripe\Stripe_Client;
+use LEAStudios\Payments\Support\Email_Context_Provider;
 
 /**
  * Wires all plugin components together.
@@ -63,6 +64,7 @@ final class Plugin {
 		$this->register_handlers( $container );
 		$this->register_rest_routes( $container );
 		$this->register_frontend_render( $container );
+		$this->register_email_context_provider( $container );
 
 		if ( is_admin() ) {
 			$this->init_admin( $container );
@@ -195,6 +197,19 @@ final class Plugin {
 		add_action( 'init', [ $block, 'register' ] );
 		add_action( 'init', [ $confirmation, 'register' ] );
 		add_action( 'init', [ $account, 'register' ] );
+	}
+
+	/**
+	 * Register the public read seam that exposes order/subscription context as
+	 * plain arrays for sibling plugins (e.g. leastudios-email-templates) via
+	 * the `leastudios_payments_*_email_context` filters.
+	 *
+	 * @param Container $c Service container.
+	 *
+	 * @return void
+	 */
+	private function register_email_context_provider( Container $c ): void {
+		( new Email_Context_Provider( $c->get( 'order_repo' ), $c->get( 'subscription_repo' ) ) )->init();
 	}
 
 	/**
