@@ -4,7 +4,7 @@ Tags: stripe, payments, checkout, subscriptions, ecommerce
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -58,6 +58,10 @@ Yes. You need a Stripe account with API keys. Both test mode and live mode are s
 Yes. Stripe Embedded Checkout renders the payment form directly on your page. The customer never leaves your site.
 
 == Changelog ==
+
+= 1.2.0 — 2026-05-29 =
+
+* Added: public email-context read filters — `leastudios_payments_order_email_context`, `leastudios_payments_subscription_email_context`, and `leastudios_payments_local_subscription_id` — so sibling plugins (e.g. leaStudios Email Templates) can render transactional emails from order and subscription data without a build-time dependency on this plugin's internal classes. Each filter returns a plain scalar array, never an internal object.
 
 = 1.1.1 — 2026-05-24 =
 
